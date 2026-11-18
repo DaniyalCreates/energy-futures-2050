@@ -1,0 +1,8 @@
+# Batch 3 baseline experiment. Test period (2024-2025) stays sealed until Batch 4 model selection (D-018).
+target: underlying_demand
+train_start: "2009-01-01"
+validation: {start: "2023-01-01", end: "2023-12-31"}   # local dates of target days
+test: {start: "2024-01-01", end: "2025-12-31", sealed: true}
+refit: "MS"            # monthly expanding-window refits
+high_demand_quantile: 0.95   # threshold computed on the 365 days before validation only
+high_demand_window_days: 365
