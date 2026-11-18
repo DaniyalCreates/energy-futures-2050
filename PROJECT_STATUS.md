@@ -3,7 +3,7 @@
 _Last updated: 2026-11-18_
 
 ## 1. Current position
-- **Phase 1 / Batch 1 (Foundation)**, Steps 1–8: files are in `~/Desktop/Energy Futures 2050` and the tests pass in Claude's sandbox on the Mac. **Two items remain before Batch 1 is complete:** (a) Dani runs `uv sync && uv run pytest` in the macOS terminal; (b) done: first commit 6eabf6d.
+- **Batch 1 (Foundation), Steps 1–8: COMPLETE (2026-11-18).** Verified on the native macOS run: `uv sync && uv run pytest` gave 13 passed (reported by Dani). Next: Batch 2 (Steps 9–16), awaiting approval.
 
 ## 2. Completed tasks and evidence
 | Step | Task | Evidence |
@@ -25,7 +25,7 @@ None downloaded yet. Planned sources are listed in README.md; details come in Ba
 None yet.
 
 ## 6. Tests
-`uv run pytest`: 13 passed in the cloud workspace, on a fresh clone, and in Claude's Linux sandbox on the Mac with `uv sync --locked` (2026-11-18). Native macOS run: pending (Dani).
+`uv run pytest`: 13 passed in the cloud workspace, on a fresh clone, and in Claude's Linux sandbox on the Mac with `uv sync --locked` (2026-11-18). Native macOS (Apple Silicon) run: 13 passed (Dani, 2026-11-18).
 
 ## 7. Problems and open questions
 - Git identity set for this repo only (Daniyal Tariq, personal Gmail). Commits will show this email publicly if the repo is made public.
@@ -35,6 +35,6 @@ None yet.
 See DECISIONS.md (D-001 to D-008).
 
 ## 9. Next three tasks
-1. Dani: `cd ~/Desktop/"Energy Futures 2050" && uv sync && uv run pytest` (uv is already installed).
+1. Batch 2, Step 9: audit the NESO historic demand fields → `docs/data_dictionary.md`.
 2. Create a private GitHub repo (DaniyalCreates/energy-futures-2050) when Dani approves publishing.
-3. Batch 2, Step 9: audit the NESO historic demand fields → `docs/data_dictionary.md`.
+3. Batch 2, Steps 10–12: choose the target, write the download script, fetch 2009–2025.
