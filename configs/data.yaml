@@ -1,0 +1,29 @@
+# Batch 2 data configuration. Changing this file changes the dataset version.
+neso:
+  api_base: "https://api.neso.energy/api/3/action"
+  dataset_id: "historic-demand-data"
+  # Resource names look like "Historic Demand Data 2009"; resolved at runtime via the CKAN API.
+  first_year: 2009
+  last_year: 2025
+
+weather:
+  api_url: "https://archive-api.open-meteo.com/v1/archive"
+  start_date: "2009-01-01"
+  end_date: "2025-12-31"
+  hourly: ["temperature_2m", "wind_speed_10m", "shortwave_radiation", "cloud_cover"]
+  timezone: "GMT"   # UTC timestamps
+  # Six GB demand centres. Equal weights for now; population weighting is deferred until
+  # weights can be taken from a verified ONS source (see DECISIONS.md D-012).
+  locations:
+    london:     {lat: 51.507, lon: -0.128}
+    birmingham: {lat: 52.486, lon: -1.890}
+    manchester: {lat: 53.481, lon: -2.243}
+    newcastle:  {lat: 54.978, lon: -1.618}
+    glasgow:    {lat: 55.864, lon: -4.252}
+    cardiff:    {lat: 51.481, lon: -3.179}
+
+paths:
+  raw: "data/raw"
+  interim: "data/interim"
+  processed: "data/processed"
+  reports: "docs/data_quality"
