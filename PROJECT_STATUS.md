@@ -3,7 +3,7 @@
 _Last updated: 2026-11-18_
 
 ## 1. Current position
-- **Phase 1 / Batch 1 (Foundation)**, Steps 1–8: files are in `~/Desktop/Energy Futures 2050` and the tests pass in Claude's sandbox on the Mac. **Two items remain before Batch 1 is complete:** (a) Dani runs `uv sync && uv run pytest` in the macOS terminal; (b) the first commit, once a Git identity is provided.
+- **Phase 1 / Batch 1 (Foundation)**, Steps 1–8: files are in `~/Desktop/Energy Futures 2050` and the tests pass in Claude's sandbox on the Mac. **Two items remain before Batch 1 is complete:** (a) Dani runs `uv sync && uv run pytest` in the macOS terminal; (b) done: first commit 6eabf6d.
 
 ## 2. Completed tasks and evidence
 | Step | Task | Evidence |
@@ -28,7 +28,7 @@ None yet.
 `uv run pytest`: 13 passed in the cloud workspace, on a fresh clone, and in Claude's Linux sandbox on the Mac with `uv sync --locked` (2026-11-18). Native macOS run: pending (Dani).
 
 ## 7. Problems and open questions
-- Git commit identity not provided, so the first commit is deferred until Dani supplies a name and email.
+- Git identity set for this repo only (Daniyal Tariq, personal Gmail). Commits will show this email publicly if the repo is made public.
 - Claude's shell on the Mac is a Linux sandbox. The macOS environment has to be built by Dani with `brew install uv` then `uv sync`. `.venv` is never committed.
 
 ## 8. Approved decisions
@@ -36,5 +36,5 @@ See DECISIONS.md (D-001 to D-008).
 
 ## 9. Next three tasks
 1. Dani: `cd ~/Desktop/"Energy Futures 2050" && uv sync && uv run pytest` (uv is already installed).
-2. Dani provides a Git name and email, then Claude makes the first commit (the files are already staged).
+2. Create a private GitHub repo (DaniyalCreates/energy-futures-2050) when Dani approves publishing.
 3. Batch 2, Step 9: audit the NESO historic demand fields → `docs/data_dictionary.md`.
