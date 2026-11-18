@@ -1,0 +1,12 @@
+# Batch 4 configuration. Pre-registered before the test set is unsealed (D-023).
+target: underlying_demand
+benchmark_target: nd                       # NESO publishes ND forecasts, so the NESO comparison uses ND
+validation: {start: "2023-01-01", end: "2023-12-31"}
+train_start_candidates: ["2009-01-01", "2016-01-01", "2020-01-01"]   # chosen on validation MAE (D-022)
+quantile_backtest: {start: "2022-01-01", end: "2023-12-31", refit: "QS"}
+cqr_window_days: 365
+test: {start: "2024-01-01", end: "2025-12-31"}
+fw_comparison_start: "2024-03-08"          # first full day of archived forecasts for ALL weather variables
+point_refit: "MS"
+quantile_refit: "QS"                       # quarterly: 7 models per refit (compute budget)
+locations: [london, birmingham, manchester, newcastle, glasgow, cardiff]

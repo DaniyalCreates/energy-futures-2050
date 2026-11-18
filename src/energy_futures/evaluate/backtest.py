@@ -42,3 +42,23 @@ def run(model_factory, X: pd.DataFrame, y: pd.Series, eval_start: str, eval_end:
         log.append({"block_start": str(b0.date()), "train_end_utc": str(X.index[tr].max()),
                     "n_train": int(tr.sum()), "n_eval": int(te.sum())})
     return pd.concat(preds), log
+
+
+def run_multi(model_factory, X_fit: pd.DataFrame, y: pd.Series, X_pred: dict[str, pd.DataFrame],
+              eval_start: str, eval_end: str, freq: str = "MS", method: str = "predict"):
+    """Like `run`, but each refit model predicts from several input sets (e.g. the same model fed
+    observed vs forecast weather). Training always uses X_fit rows up to the leakage-safe cutoff."""
+    task.assert_no_leakage(X_fit.index)
+    days = local_days(X_fit.index)
+    out = {k: [] for k in X_pred}
+    log = []
+    for b0, b1 in blocks(eval_start, eval_end, freq):
+        tr = X_fit.index <= task.train_cutoff(b0)
+        te_idx = X_fit.index[((days >= b0) & (days <= b1)).to_numpy()]
+        assert X_fit.index[tr].max() < te_idx.min(), "training overlaps evaluation"
+        m = model_factory().fit(X_fit[tr], y[tr])
+        for k, Xp in X_pred.items():
+            p = getattr(m, method)(Xp.reindex(te_idx))
+            out[k].append(p if isinstance(p, pd.DataFrame) else pd.Series(p, index=te_idx))
+        log.append({"block_start": str(b0.date()), "train_end_utc": str(X_fit.index[tr].max()), "n_eval": len(te_idx)})
+    return {k: pd.concat(v) for k, v in out.items()}, log
