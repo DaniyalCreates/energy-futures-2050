@@ -24,3 +24,9 @@
 - Added the experiment runner `experiments/baselines.py` (predictions + metrics under `outputs/`, report under `docs/results/`, figures under `docs/figures/`).
 - EXP-001 run on validation 2023; training-window sensitivity recorded.
 - Added scikit-learn and matplotlib; 45 tests passing.
+
+## 2026-11-18 — Batch 4 (Advanced ML)
+
+- Added Batch 4 downloads (NESO day-ahead forecast performance; Open-Meteo `previous_day2` forecasts), parsers, and LightGBM (+ libomp on macOS).
+- Added the feature builder with leakage-tested demand features, the LightGBM point and quantile models, rolling CQR calibration, a multi-input backtest, and the experiment and report scripts.
+- Pre-registered the protocol (61745db), then ran EXP-002/003 on validation and EXP-004 on test (once). Added the forecasting report and 4 figures. 50 tests passing.
