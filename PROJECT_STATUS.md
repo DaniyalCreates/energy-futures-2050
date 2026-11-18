@@ -3,38 +3,43 @@
 _Last updated: 2026-11-18_
 
 ## 1. Current position
-- **Batch 1 (Foundation), Steps 1–8: COMPLETE (2026-11-18).** Verified on the native macOS run: `uv sync && uv run pytest` gave 13 passed (reported by Dani). Next: Batch 2 (Steps 9–16), awaiting approval.
+- **Batch 1 (Steps 1–8): COMPLETE.** Verified on macOS: 13 tests passed.
+- **Batch 2 (Steps 9–16): COMPLETE.** Dataset v1 built and validated (see section 4). One Mac-side check remains open (section 7).
+- **Next: Batch 3 (Steps 17–23), baselines.** Awaiting approval.
 
 ## 2. Completed tasks and evidence
-| Step | Task | Evidence |
-| --- | --- | --- |
-| 1 | Objectives confirmed against the project brief and the assessment doc | Assessment doc in the Claude Project; DECISIONS D-001 to D-008 |
-| 4 | Modular structure created | `tests/test_foundation.py::test_expected_structure_exists` passes |
-| 5–6 | `uv` environment, Python 3.12.3, essential packages only | `uv lock` resolved 18 packages; lock includes macOS arm64 wheels |
-| 7 | `.gitignore` | 11 ignore-rule tests pass (secrets, data, `.venv`, models, outputs) |
-| 8 | Git initialised, README written | `git init -b main` |
-| 2–3 | Folder check and creation on the Mac | Dani created the folder; it was confirmed empty before the files were copied in (2026-11-18) |
+| Step | Evidence |
+| --- | --- |
+| 9 Verify the NESO definitions | `docs/data_dictionary.md` (21 fields, MW, settlement-period rules) |
+| 10 Target | D-010 confirmed: underlying demand = ND + embedded solar + embedded wind |
+| 11–12 Acquisition | `ingest/neso.py`, `ingest/weather.py`; 17 NESO CSVs + 102 weather files; `data/raw/manifest.csv` (SHA-256) |
+| 13 Inspection | Quality findings + sanity checks in `docs/data_dictionary.md` |
+| 14 Cleaning | `clean/demand.py` (clock changes, duplicates, forecast rows, flags; stops on parse errors) |
+| 15 Weather | `clean/weather.py`; aligned to period starts; equal-weight GB mean (D-012) |
+| 16 Saved and versioned | `data/processed/demand_weather.parquet` + `dataset_version.json` |
 
-## 3. Files created
-README.md, pyproject.toml, uv.lock, .python-version, .gitignore, .env.example, PROJECT_STATUS.md, DECISIONS.md, EXPERIMENT_LOG.md, CHANGELOG.md, tests/test_foundation.py, src/energy_futures/** (empty package modules), .gitkeep placeholders.
+## 3. Files (Batch 2)
+configs/data.yaml; src/energy_futures/{config.py, pipeline.py, ingest/*, clean/*}; tests/test_clean_demand.py, tests/test_weather_align.py; docs/data_dictionary.md; docs/data_quality/quality_report.json; README, DECISIONS, CHANGELOG, EXPERIMENT_LOG.
 
 ## 4. Dataset provenance
-None downloaded yet. Planned sources are listed in README.md; details come in Batch 2 (`docs/data_dictionary.md`).
+v1: 298,032 half-hours, 2009-01-01 to 2025-12-31 UTC, no gaps. Config hash e0446e27f33da46a, manifest hash 31c6628cede87de2. NESO Open Data Licence; Open-Meteo CC BY 4.0 (non-commercial free tier). Data files are git-ignored; rebuild with `pipeline all`.
 
 ## 5. Experiments and results
-None yet.
+No model experiments yet. Descriptive facts only: ND annual mean 35.9 → 26.2 GW and underlying demand 36.6 → 30.2 GW (2009 → 2025); daily temperature–demand correlation −0.78 (2019).
 
 ## 6. Tests
-`uv run pytest`: 13 passed in the cloud workspace, on a fresh clone, and in Claude's Linux sandbox on the Mac with `uv sync --locked` (2026-11-18). Native macOS (Apple Silicon) run: 13 passed (Dani, 2026-11-18).
+26 passed (Claude's sandbox on the Mac, 2026-11-18). Batch 1's 13 tests were verified natively on macOS.
 
 ## 7. Problems and open questions
-- Git identity set for this repo only (Daniyal Tariq, personal Gmail). Commits will show this email publicly if the repo is made public.
-- Claude's shell on the Mac is a Linux sandbox. The macOS environment has to be built by Dani with `brew install uv` then `uv sync`. `.venv` is never committed.
+- Claude's sandboxes can't reach NESO or Open-Meteo, so downloads run on Dani's Mac (D-013).
+- macOS `.venv` import issue: `chflags -R nohidden .venv` applied; still to confirm that `uv run python -m energy_futures.pipeline build` works without `PYTHONPATH=src` (D-016).
+- Weather uses reanalysis, which counts as perfect-weather information (D-009). The realistic-weather setting is needed before any comparison with NESO's forecast (Batch 4).
+- Population weighting for weather is deferred (D-012).
 
 ## 8. Approved decisions
-See DECISIONS.md (D-001 to D-008).
+DECISIONS.md D-001 to D-016.
 
 ## 9. Next three tasks
-1. Batch 2, Step 9: audit the NESO historic demand fields → `docs/data_dictionary.md`.
-2. Create a private GitHub repo (DaniyalCreates/energy-futures-2050) when Dani approves publishing.
-3. Batch 2, Steps 10–12: choose the target, write the download script, fetch 2009–2025.
+1. Dani: confirm `uv run pytest` and `uv run python -m energy_futures.pipeline build` both work on macOS without PYTHONPATH.
+2. Batch 3, Step 17: formulate the day-ahead task (forecast issued at a fixed cut-off; permitted inputs) and write it in DECISIONS.
+3. Batch 3, Steps 18–19: chronological splits (train ≤2022, validate 2023, test 2024–2025) and the seasonal-naïve baseline.

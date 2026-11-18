@@ -32,6 +32,10 @@ def build():
     if not files:
         sys.exit("No raw NESO files found. Run the 'download' step first.")
     demand, drep = cd.clean(cd.load_raw(files))
+    if drep["rows_unparseable_date"] or drep["rows_invalid_period"]:
+        (reports / "quality_report.json").write_text(json.dumps({"demand": drep}, indent=2, default=str))
+        sys.exit(f"STOP: {drep['rows_unparseable_date']} unparseable dates, {drep['rows_invalid_period']} invalid "
+                 "periods. See docs/data_quality/quality_report.json; fix the parser before building.")
     demand.to_parquet(interim / "demand_clean.parquet")
     print(f"Demand: {drep['rows_clean']:,} clean half-hours, {drep['missing_slots']} missing slots")
 

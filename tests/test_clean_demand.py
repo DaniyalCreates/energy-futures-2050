@@ -44,7 +44,9 @@ def test_full_clean_produces_continuous_unique_grid_across_clock_changes():
 
 
 def test_mixed_date_formats_parse():
-    raw = pd.concat([make_day("2012-01-01", 48, "%d-%b-%Y"), make_day("2012-01-02", 48, "%Y-%m-%d")])
+    # Formats seen in real NESO files: 01-JAN-2009, 01-Jan-23 (2023 file), 2025-01-01.
+    raw = pd.concat([make_day("2012-01-01", 48, "%d-%b-%Y"), make_day("2012-01-02", 48, "%d-%b-%y"),
+                     make_day("2012-01-03", 48, "%Y-%m-%d")])
     df, rep = cd.clean(raw)
     assert rep["rows_unparseable_date"] == 0 and rep["missing_slots"] == 0
 
@@ -82,3 +84,10 @@ def test_implausible_values_flagged_not_deleted():
     day.loc[day.index[5], "ND"] = 0
     df, rep = cd.clean(day)
     assert rep["flag_nd_implausible"] == 1 and len(df) == 48
+
+
+def test_tsd_below_nd_flagged():
+    day = make_day("2009-08-29", 48)
+    day.loc[day.index[:3], "TSD"] = 0
+    df, rep = cd.clean(day)
+    assert rep["flag_tsd_invalid"] == 3 and df["nd"].notna().all()

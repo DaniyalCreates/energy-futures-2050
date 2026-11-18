@@ -30,7 +30,10 @@ Requires [uv](https://docs.astral.sh/uv/) (`brew install uv` on macOS).
 ```bash
 uv sync          # builds .venv from the pinned uv.lock (Python 3.12)
 uv run pytest    # runs the test suite
+uv run python -m energy_futures.pipeline all   # download raw data + build the dataset
 ```
+
+**macOS troubleshooting:** if you see `No module named 'energy_futures'`, run `chflags -R nohidden .venv`. Python skips hidden `.pth` files, and macOS sometimes marks them hidden.
 
 ## Project layout
 

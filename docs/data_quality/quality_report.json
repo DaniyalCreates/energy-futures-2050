@@ -1,0 +1,87 @@
+{
+  "demand": {
+    "rows_raw": 298032,
+    "rows_forecast_removed": 0,
+    "rows_unparseable_date": 0,
+    "rows_invalid_period": 0,
+    "invalid_period_examples": [],
+    "duplicate_keys": 0,
+    "duplicate_keys_conflicting": 0,
+    "grid_slots": 298032,
+    "missing_slots": 0,
+    "missing_values": {
+      "ND": 0,
+      "TSD": 0,
+      "ENGLAND_WALES_DEMAND": 0,
+      "EMBEDDED_WIND_GENERATION": 0,
+      "EMBEDDED_WIND_CAPACITY": 0,
+      "EMBEDDED_SOLAR_GENERATION": 0,
+      "EMBEDDED_SOLAR_CAPACITY": 0,
+      "NON_BM_STOR": 0,
+      "PUMP_STORAGE_PUMPING": 0
+    },
+    "flag_nd_implausible": 0,
+    "flag_embedded_negative": 0,
+    "flag_solar_above_capacity": 0,
+    "flag_tsd_invalid": 501,
+    "rows_clean": 298032,
+    "start_utc": "2009-01-01 00:00:00+00:00",
+    "end_utc": "2025-12-31 23:30:00+00:00"
+  },
+  "weather": {
+    "london": {
+      "hourly_rows": 149016,
+      "missing_half_hours": {
+        "temperature_2m": 1,
+        "wind_speed_10m": 1,
+        "cloud_cover": 1,
+        "shortwave_radiation": 2
+      }
+    },
+    "birmingham": {
+      "hourly_rows": 149016,
+      "missing_half_hours": {
+        "temperature_2m": 1,
+        "wind_speed_10m": 1,
+        "cloud_cover": 1,
+        "shortwave_radiation": 2
+      }
+    },
+    "manchester": {
+      "hourly_rows": 149016,
+      "missing_half_hours": {
+        "temperature_2m": 1,
+        "wind_speed_10m": 1,
+        "cloud_cover": 1,
+        "shortwave_radiation": 2
+      }
+    },
+    "newcastle": {
+      "hourly_rows": 149016,
+      "missing_half_hours": {
+        "temperature_2m": 1,
+        "wind_speed_10m": 1,
+        "cloud_cover": 1,
+        "shortwave_radiation": 2
+      }
+    },
+    "glasgow": {
+      "hourly_rows": 149016,
+      "missing_half_hours": {
+        "temperature_2m": 1,
+        "wind_speed_10m": 1,
+        "cloud_cover": 1,
+        "shortwave_radiation": 2
+      }
+    },
+    "cardiff": {
+      "hourly_rows": 149016,
+      "missing_half_hours": {
+        "temperature_2m": 1,
+        "wind_speed_10m": 1,
+        "cloud_cover": 1,
+        "shortwave_radiation": 2
+      }
+    }
+  }
+}

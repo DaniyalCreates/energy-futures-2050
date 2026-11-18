@@ -44,3 +44,25 @@ This approximates demand before local generation offsets it, so growth in roofto
 | shortwave_radiation | W/m² | Mean of the **preceding** hour | Value of the hour containing the period |
 
 **Leakage caveat:** reanalysis is weather *as it happened*. A real day-ahead forecaster only has weather *forecasts*. Forecasting experiments must label results that use this data as "perfect-weather", and compare with NESO's forecast only in a realistic-weather setting (D-009).
+
+## Dataset version v1 (built 2026-11-18)
+
+- `data/processed/demand_weather.parquet`: 298,032 half-hourly rows, 2009-01-01 00:00 to 2025-12-31 23:30 UTC; config hash `e0446e27f33da46a`, raw-manifest hash `31c6628cede87de2` (`dataset_version.json`). Raw files and SHA-256 checksums: `data/raw/manifest.csv`.
+- Rebuild: `uv run python -m energy_futures.pipeline all`. The quality report is at `docs/data_quality/quality_report.json`.
+
+### Quality findings (Step 13)
+
+| Finding | Scale | Handling |
+| --- | --- | --- |
+| The 2023 file uses a different date format (`01-Jan-23`) | 17,520 rows (a whole year) | Parser extended; the build now **stops** if any date fails to parse |
+| TSD recorded as 0 (TSD < ND) | 501 half-hours in 2009, 2010, 2012, 2016, 2017 and 2018 | `flag_tsd_invalid`, kept, not deleted; TSD is not the target |
+| Gaps in the half-hourly grid, duplicates, NESO forecast rows | 0 | — |
+| ND outside 5–70 GW, negative embedded generation, solar above capacity | 0 | Flags in place for future data |
+| Weather at the series edge | Last 1–2 half-hours of 2025 (no following hour to interpolate from) | Left as NaN |
+
+### Sanity checks on the real data
+
+- Daily mean underlying demand against GB-mean temperature, 2019: correlation −0.78, as expected for heating-driven demand.
+- Embedded solar is zero at night (mean 0.0 MW between 00:00 and 01:00 UTC).
+- Annual mean, 2009 → 2025: **ND 35.9 → 26.2 GW (−27%)** and **underlying demand 36.6 → 30.2 GW (−17%)**. Embedded solar capacity grew from 0 to 22.1 GW. About a third of the apparent fall in ND is embedded generation, not lower consumption, which supports D-010.
+- Minimum ND: 12.8 GW at 13:30 UTC on 25 May 2025 (sunny spring Sunday).

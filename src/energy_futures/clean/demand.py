@@ -11,7 +11,7 @@ import pandas as pd
 TZ = "Europe/London"
 NUMERIC = ["ND", "TSD", "ENGLAND_WALES_DEMAND", "EMBEDDED_WIND_GENERATION", "EMBEDDED_WIND_CAPACITY",
            "EMBEDDED_SOLAR_GENERATION", "EMBEDDED_SOLAR_CAPACITY", "NON_BM_STOR", "PUMP_STORAGE_PUMPING"]
-DATE_FORMATS = ["%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
+DATE_FORMATS = ["%Y-%m-%d", "%d-%b-%Y", "%d-%b-%y", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
 
 
 def parse_dates(s: pd.Series) -> pd.Series:
@@ -108,7 +108,9 @@ def clean(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     df["flag_nd_implausible"] = (df["ND"] <= 5_000) | (df["ND"] > 70_000)
     df["flag_embedded_negative"] = (df["EMBEDDED_SOLAR_GENERATION"] < 0) | (df["EMBEDDED_WIND_GENERATION"] < 0)
     df["flag_solar_above_capacity"] = df["EMBEDDED_SOLAR_GENERATION"] > df["EMBEDDED_SOLAR_CAPACITY"]
-    for f in ["flag_nd_implausible", "flag_embedded_negative", "flag_solar_above_capacity"]:
+    # TSD = ND + station load + pumping + exports, so TSD < ND is a recording error (seen as TSD = 0).
+    df["flag_tsd_invalid"] = df["TSD"] < df["ND"]
+    for f in ["flag_nd_implausible", "flag_embedded_negative", "flag_solar_above_capacity", "flag_tsd_invalid"]:
         rep[f] = int(df[f].sum())
 
     # 6. Candidate targets (decision D-010): underlying demand adds back estimated embedded generation.
@@ -117,5 +119,5 @@ def clean(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     rep["rows_clean"] = int(df["ND"].notna().sum())
     rep["start_utc"], rep["end_utc"] = str(df.index.min()), str(df.index.max())
     keep = ["settlement_date", "settlement_period", *NUMERIC, "underlying_demand", "SOURCE_FILE",
-            "flag_missing_row", "flag_nd_implausible", "flag_embedded_negative", "flag_solar_above_capacity"]
+            "flag_missing_row", "flag_nd_implausible", "flag_embedded_negative", "flag_solar_above_capacity", "flag_tsd_invalid"]
     return df[keep].rename(columns=str.lower), rep
