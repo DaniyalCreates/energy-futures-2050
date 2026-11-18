@@ -14,9 +14,9 @@ def test_core_dependencies_import():
 
 
 def test_expected_structure_exists():
-    for rel in ["data/raw", "data/interim", "data/processed", "src/energy_futures/forecast",
-                "src/energy_futures/scenarios", "src/energy_futures/uncertainty",
-                "src/energy_futures/optimise", "tests", "docs", "dashboard"]:
+    for rel in ["data/raw", "data/interim", "data/processed", "energy_futures/forecast",
+                "energy_futures/scenarios", "energy_futures/uncertainty",
+                "energy_futures/optimise", "tests", "docs", "dashboard"]:
         assert (ROOT / rel).is_dir(), rel
 
 
