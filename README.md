@@ -31,6 +31,7 @@ Requires [uv](https://docs.astral.sh/uv/) (`brew install uv` on macOS).
 uv sync          # builds .venv from the pinned uv.lock (Python 3.12)
 uv run pytest    # runs the test suite
 uv run python -m energy_futures.pipeline all   # download raw data + build the dataset
+uv run streamlit run dashboard/app.py          # research dashboard (reads saved experiment outputs)
 ```
 
 Run commands from the project folder. The package sits at the top level (`energy_futures/`), so `python -m energy_futures...` works even when macOS hides the editable-install `.pth` file (D-029).
@@ -50,7 +51,7 @@ energy_futures/
   optimise/                     Engine 4
   evaluate/                     metrics, comparisons, sensitivity
 tests/          automated checks (data quality, leakage, constraints)
-dashboard/      Streamlit app (later phase)
+dashboard/      Streamlit research dashboard (Batch 7)
 ```
 
 ## Project records

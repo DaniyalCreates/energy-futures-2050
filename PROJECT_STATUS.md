@@ -9,7 +9,8 @@ _Last updated: 2026-11-18_
 - **Batch 4 (Steps 24–30): COMPLETE.** EXP-002/003/004; report `docs/results/forecasting_report.md`.
 - **Batch 5 (Steps 31–36): COMPLETE.** EXP-005; report `docs/results/scenarios_report.md`; assumptions `docs/assumptions.md`.
 - **Batch 6 (Steps 37–42): COMPLETE.** EXP-006; report `docs/results/optimisation_report.md`.
-- **Next: Batch 7 (Steps 43–46), Streamlit research platform.** Awaiting approval (needs Streamlit + Plotly installs).
+- **Batch 7 (Steps 43–46): COMPLETE.** `uv run streamlit run dashboard/app.py`.
+- **Next: Batch 8 (Steps 47–50), reproducibility audit, technical report, KTP case study, public-release prep.** Awaiting approval.
 
 ## 2. Completed tasks and evidence
 | Step | Evidence |
@@ -22,7 +23,10 @@ _Last updated: 2026-11-18_
 | 15 Weather | `clean/weather.py`; aligned to period starts; equal-weight GB mean (D-012) |
 | 16 Saved and versioned | `data/processed/demand_weather.parquet` + `dataset_version.json` |
 
-## 3. Files (Batch 6)
+## 3. Files (Batch 7)
+dashboard/app.py; tests/test_dashboard.py; pyproject.toml/uv.lock (streamlit, plotly).
+
+## 3-6. Files (Batch 6)
 configs/optimisation.yaml; energy_futures/{optimise/battery.py, experiments/optimisation.py}; tests/test_battery.py; docs/results/optimisation_report.md; docs/figures/b6_*.png.
 
 ## 3-5. Files (Batch 5)
@@ -48,7 +52,7 @@ v1: 298,032 half-hours, 2009-01-01 to 2025-12-31 UTC, no gaps. Config hash e0446
 Descriptive facts: ND annual mean 35.9 → 26.2 GW and underlying demand 36.6 → 30.2 GW (2009 → 2025); daily temperature–demand correlation −0.78 (2019).
 
 ## 6. Tests
-64 passed (Batch 6). 59 passed (Batch 5). 50 passed (Batch 4). 45 passed natively on macOS (Batch 3 code). Earlier: 26 passed (Claude's sandbox on the Mac, 2026-11-18). Batch 1's 13 tests were verified natively on macOS.
+69 passed (Batch 7, incl. 5 dashboard page-render tests). 64 passed (Batch 6). 59 passed (Batch 5). 50 passed (Batch 4). 45 passed natively on macOS (Batch 3 code). Earlier: 26 passed (Claude's sandbox on the Mac, 2026-11-18). Batch 1's 13 tests were verified natively on macOS.
 
 ## 7. Problems and open questions
 - Claude's sandboxes can't reach NESO or Open-Meteo, so downloads run on Dani's Mac (D-013).
@@ -59,9 +63,9 @@ Descriptive facts: ND annual mean 35.9 → 26.2 GW and underlying demand 36.6 �
 - Population weighting for weather is deferred (D-012).
 
 ## 8. Approved decisions
-DECISIONS.md D-001 to D-038.
+DECISIONS.md D-001 to D-039.
 
 ## 9. Next three tasks
-1. Batch 7, Steps 43–44: Streamlit app (forecast view with calibrated intervals; evaluation results) reading saved outputs only.
-2. Batch 7, Step 45: scenario and stress comparisons + decision-experiment views.
-3. Batch 7, Step 46: assumptions, sources and limitations pages; every number traceable to `outputs/` or `docs/results/`.
+1. Batch 8, Step 47: reproducibility audit (fresh clone → uv sync → pipeline → experiments → identical numbers), dependency check, CI workflow.
+2. Batch 8, Step 48: technical research report (research question, literature context, data, methods, experiments, results, limitations, future work).
+3. Batch 8, Steps 49–50: KTP case study; security/secrets scan; publication checklist (needs Dani's approval to publish).

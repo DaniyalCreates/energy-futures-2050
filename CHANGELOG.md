@@ -40,3 +40,8 @@
 ## 2026-11-19 — Batch 6 (Optimisation)
 
 - Added the battery LP (deterministic + CVaR, HiGHS), fixed-rule heuristic, realised evaluation, 6-arm experiment (historical + FES futures), block-bootstrap CIs, sensitivity runs, 2 figures, optimisation report. Protocol pre-registered (92fd643). 64 tests.
+
+## 2026-11-19 — Batch 7 (Research dashboard)
+
+- Added the Streamlit dashboard `dashboard/app.py`: Overview, Forecasting (weekly forecast with calibrated intervals, accuracy, calibration, NESO by hour), Future scenarios (interactive pathway/year/weather-year engine runs, summary and stress tables), Flexibility decisions (value captured, CIs, single-day recomputation, sensitivity), Assumptions & limitations (renders the reports).
+- Added Streamlit + Plotly; 5 headless page-render tests (69 total). Pages checked visually via screenshots.
