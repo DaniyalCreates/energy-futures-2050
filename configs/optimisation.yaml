@@ -1,0 +1,55 @@
+# Batch 6 decision experiment. PRE-REGISTERED: committed before any optimisation result exists (D-035).
+#
+# Decision: at 09:00 on D-1, commit a 24-hour charge/discharge schedule for one aggregated GB battery
+# for local day D. The schedule is executed against the realised load. Each day starts and ends at
+# 50% state of charge (no carry-over between days).
+
+battery:
+  roundtrip_efficiency: 0.88   # ASSUMPTION (typical Li-ion); split equally between charge and discharge
+  soc_start_end: 0.5           # fraction of energy capacity at 00:00 and 24:00 local
+  throughput_cost: 0.001       # cost-index units per MWh charged+discharged (stops pointless cycling)
+
+cost_index:                     # STYLISED, not GBP: cost_day = peak_MW + mu * shortfall_MWh
+  mu: 2.0                       # shortfall = energy (MWh) of load above the threshold T
+  risk:
+    alpha: 0.9                  # CVaR level for the risk-aware arms
+    weight: 0.5                 # objective = (1-w) * E[cost] + w * CVaR_alpha[cost]
+
+scenarios_from_quantiles:       # comonotonic day scenarios: each scenario = one quantile level all day
+  levels: [q05, q10, q25, q50, q75, q90, q95]
+  probabilities: [0.075, 0.10, 0.20, 0.25, 0.20, 0.10, 0.075]
+
+historical:                     # Setting H: real day-ahead forecasts, underlying demand
+  start: "2024-03-08"           # first day with full forecast-weather inputs (D-025)
+  end: "2025-12-31"
+  battery_mw: 6778              # FES 2025 Holistic Transition, 2024 battery capacity
+  battery_mwh: 9000             # FES 2025, 2024 battery storage capacity (9 GWh)
+  threshold_mw: 43300           # 99th percentile of 2023 underlying demand (pre-test data only)
+  error_source_for_C_minus: validation_2023_gbm_PW_from2009   # unconditional relative-error quantiles
+
+future:                         # Setting F: FES 2035/2050 net demand, synthetic forecasts from real 2024-25 errors
+  cases:
+    - {pathway: Holistic Transition, year: 2035}
+    - {pathway: Holistic Transition, year: 2035, electrification_year: 2040}
+    - {pathway: Holistic Transition, year: 2050}
+    - {pathway: Electric Engagement, year: 2050}
+  weather_year: 2022            # contains the cold, still week 9-15 Dec 2022 (Batch 5)
+  threshold: p99_of_case_net_demand
+  battery: fes_pathway_year     # FES battery MW and GWh for that pathway and year
+  seed: 2050
+
+arms:                           # 6-arm design (D-002) + reference
+  none: no battery
+  A: seasonal-naive (D-7) forecast + fixed threshold rule
+  B: LightGBM FW point forecast + deterministic LP
+  B_plus: calibrated median (q50) + deterministic LP
+  C_minus: point forecast x unconditional error quantiles (validation 2023) + risk-aware LP
+  C: calibrated conditional quantiles (CQR) + risk-aware LP
+  oracle: realised load + deterministic LP (upper bound)
+
+success_criteria:               # judged on realised outcomes only
+  H1: "Setting H: C has lower 95th-percentile daily cost AND lower total shortfall than B, with mean daily cost at most 1% higher than B."
+  H2: "Decomposition, reported whatever the result: C vs B_plus (value of the risk-aware decision rule) and C vs C_minus (value of conditional uncertainty)."
+  H3: "Setting F: C has lower 95th-percentile daily cost than B in at least 3 of the 4 future cases."
+  report_always: [mean daily cost, p95 daily cost, worst day, total shortfall MWh, annual max load after battery, share of oracle value captured]
+sensitivity: {battery_scale: [0.5, 2.0], mu: [0.5, 10.0], threshold: p95_2023, alpha: [0.5, 0.95]}
