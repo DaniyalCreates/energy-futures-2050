@@ -188,4 +188,57 @@ def future():
 
 
 if __name__ == "__main__":
-    {"historical": historical, "future": future}[sys.argv[1]]()
+    {"historical": historical, "future": future, "report": lambda: None}[sys.argv[1]]()
+
+
+# ------------------------------------------------------------------ report figures + bootstrap (Steps 41-42)
+def block_bootstrap(a, b, stat, n=2000, block=7, seed=7):
+    """Moving-block bootstrap (7-day blocks) 95% CI of stat(a) - stat(b) over paired days."""
+    rng = np.random.default_rng(seed)
+    a, b = np.asarray(a), np.asarray(b)
+    N = len(a); k = int(np.ceil(N / block)); out = []
+    for _ in range(n):
+        st = rng.integers(0, N - block + 1, k)
+        idx = np.concatenate([np.arange(s, s + block) for s in st])[:N]
+        out.append(stat(a[idx]) - stat(b[idx]))
+    return np.percentile(out, [2.5, 97.5])
+
+
+def report():
+    FIG = ROOT / "docs" / "figures"
+    sets = {"Historical 2024-25\n(real forecasts)": ("historical", "central")}
+    for v in ["Holistic_2035", "Holistic_2035_fastelec", "Holistic_2050", "Electric_2050"]:
+        sets[v.replace("_", " ").replace("fastelec", "fast elec.")] = ("future", v)
+    daily = {k: pd.read_parquet(OUT / f"{k}_daily.parquet") for k in ("historical", "future")}
+    cap, ci_rows = {}, []
+    p95 = lambda x: np.quantile(x, 0.95)
+    for label, (k, v) in sets.items():
+        g = daily[k][daily[k].variant == v]
+        cap[label] = summarise(g).oracle_value_captured_pct.drop(["none", "oracle"])
+        piv = g.pivot(index="day", columns="arm", values="cost").sort_index()
+        for stat_name, f in (("mean", np.mean), ("p95", p95)):
+            lo, hi = block_bootstrap(piv["C"], piv["B"], f)
+            ci_rows.append({"setting": label.replace("\n", " "), "stat": stat_name, "diff": f(piv["C"]) - f(piv["B"]), "lo": lo, "hi": hi})
+    ci = pd.DataFrame(ci_rows)
+    ci.to_csv(OUT / "c_vs_b_bootstrap.csv", index=False)
+    C = pd.DataFrame(cap).T
+    ax = C.plot.bar(figsize=(11, 4.2), width=0.8, color=["#bbbbbb", "#6baed6", "#4292c6", "#fd8d3c", "#d94801"])
+    ax.set_ylabel("% of perfect-foresight value captured"); ax.set_ylim(0, 100)
+    ax.set_title("Battery value captured by each decision method (100% = perfect foresight)")
+    ax.legend(["A fixed rule", "B point + LP", "B+ median + LP", "C- point + error scenarios + CVaR", "C calibrated quantiles + CVaR"], fontsize=8, ncol=3)
+    plt.xticks(rotation=0, fontsize=8); plt.tight_layout(); plt.savefig(FIG / "b6_value_captured.png", dpi=120); plt.close()
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), sharey=True)
+    for ax, st in zip(axes, ("mean", "p95")):
+        sub = ci[ci.stat == st].reset_index(drop=True)
+        y = np.arange(len(sub))[::-1]
+        ax.errorbar(sub["diff"], y, xerr=[sub["diff"] - sub.lo, sub.hi - sub["diff"]], fmt="o", capsize=3)
+        ax.axvline(0, color="k", lw=0.8)
+        ax.set_yticks(y); ax.set_yticklabels(sub.setting, fontsize=8)
+        ax.set_title(f"C minus B: {'mean' if st == 'mean' else '95th-percentile'} daily cost (95% CI)", fontsize=10)
+        ax.set_xlabel("cost-index units (negative = C better)")
+    fig.tight_layout(); fig.savefig(FIG / "b6_c_vs_b_ci.png", dpi=120); plt.close(fig)
+    print(C.round(1).to_string()); print(ci.round(1).to_string())
+
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "report":
+    report()

@@ -36,3 +36,7 @@
 - Moved the package to top level (`energy_futures/`) to fix recurring macOS import failures (D-029).
 - Added the FES 2025 download (ED1, ED2, ES1), parsers, scenario engine (additive FES increments, heat-pump COP shape, EV valley-filling, wind/solar scaled to FES energy), stress-window search, experiment runner, 2 figures.
 - Added `docs/assumptions.md` and `docs/results/scenarios_report.md`; EXP-005. 59 tests.
+
+## 2026-11-19 — Batch 6 (Optimisation)
+
+- Added the battery LP (deterministic + CVaR, HiGHS), fixed-rule heuristic, realised evaluation, 6-arm experiment (historical + FES futures), block-bootstrap CIs, sensitivity runs, 2 figures, optimisation report. Protocol pre-registered (92fd643). 64 tests.

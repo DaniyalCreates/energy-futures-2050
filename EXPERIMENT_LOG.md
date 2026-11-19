@@ -55,3 +55,13 @@ FW quantiles + CQR coverage on test, 50/80/90%: 48.8 / 79.6 / 90.5 (raw 34.4 / 6
 - Cold, still week (9–15 Dec 2022), Holistic 2050: peak 108.2 GW, peak net 81.6 GW, 10.1 TWh net energy in 7 days.
 - Sensitivity, Holistic 2035 median peak: central 60.2, 30% unmanaged EV 71.2, hot-water 0.2 59.4 GW.
 - Known artefact: EV valley-filling gives zero EV at peak before ~2040 and flattens whole days after ~2040 (EV at peak 21–27 GW vs FES 8–14 GW).
+
+## EXP-006 · Flexibility decision experiment (6 arms) · 19 Nov 2026 · protocol commit 92fd643
+
+Setting H (8 Mar 2024 – Dec 2025, real forecasts), perfect-foresight value captured: A 37.7%, B 61.3%, B+ 61.2%, C− 63.1%, **C 63.7%**.
+
+C − B: mean daily cost −69 [−125, −25]; p95 −21 [−596, +186]; shortfall −10.1 GWh [−24.3, +0.3]. C − C−: mean −19 [−47, +13].
+
+Setting F (FES futures), C − B p95 negative in 3 of 4 cases; all CIs include 0. C ahead of B on every metric in all 8 historical sensitivity variants.
+
+Report: `docs/results/optimisation_report.md`. Outputs: `outputs/optimisation/`.
