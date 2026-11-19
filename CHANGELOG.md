@@ -30,3 +30,9 @@
 - Added Batch 4 downloads (NESO day-ahead forecast performance; Open-Meteo `previous_day2` forecasts), parsers, and LightGBM (+ libomp on macOS).
 - Added the feature builder with leakage-tested demand features, the LightGBM point and quantile models, rolling CQR calibration, a multi-input backtest, and the experiment and report scripts.
 - Pre-registered the protocol (61745db), then ran EXP-002/003 on validation and EXP-004 on test (once). Added the forecasting report and 4 figures. 50 tests passing.
+
+## 2026-11-19 — Batch 5 (Future scenarios)
+
+- Moved the package to top level (`energy_futures/`) to fix recurring macOS import failures (D-029).
+- Added the FES 2025 download (ED1, ED2, ES1), parsers, scenario engine (additive FES increments, heat-pump COP shape, EV valley-filling, wind/solar scaled to FES energy), stress-window search, experiment runner, 2 figures.
+- Added `docs/assumptions.md` and `docs/results/scenarios_report.md`; EXP-005. 59 tests.

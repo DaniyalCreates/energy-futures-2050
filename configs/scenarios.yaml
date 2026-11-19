@@ -1,0 +1,23 @@
+# Batch 5 scenario engine configuration (Steps 32-35). Every number here is an input or an
+# explicitly labelled assumption; FES values are read from data/raw/fes at run time.
+fes:
+  ed1: data/raw/fes/fes2025_ed1_v006.csv
+  es1: data/raw/fes/fes2025_es1_v006.csv
+  base_year: 2024              # FES fiscal year matched to our calendar-2024 history (D-031)
+pathways: [Holistic Transition, Electric Engagement, Hydrogen Evolution, Falling Behind]
+years: [2030, 2035, 2040, 2050]
+weather_years: [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]  # embedded solar CF reliable from 2013
+
+heat_pumps:
+  base_temp_c: 15.5            # heating threshold (UK degree-day convention)
+  flow_temp_c: 45.0            # ASSUMPTION: heat-pump flow temperature for COP
+  cop: air_source_staffell2012 # COP = 6.08 - 0.09*dT + 0.0005*dT^2, dT = flow - outdoor (Staffell et al., 2012)
+  hot_water_share: 0.0         # ASSUMPTION (sensitivity 0.2): share of HP energy that is flat hot-water load
+ev:
+  smart: valley_fill               # ASSUMPTION: managed charging fills each day's lowest-demand half-hours (idealised)
+  unmanaged_window_local: [17, 22] # ASSUMPTION: unmanaged charging spread evenly 17:00-22:00
+  smart_share: 1.0                 # ASSUMPTION central case (sensitivity 0.7); EV-at-peak vs FES reported as a check
+stress:
+  cold_still_days: 7
+  low_renewable_days: 14
+  fast_electrification: {year: 2035, electrification_from: 2040}   # 2035 demand with 2040 EV/HP/flat levels

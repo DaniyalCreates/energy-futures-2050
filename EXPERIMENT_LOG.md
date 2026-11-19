@@ -45,3 +45,13 @@ Comparison window 8 Mar 2024 – 31 Dec 2025, MAE (MW):
 | NESO operational | — | **653** |
 
 FW quantiles + CQR coverage on test, 50/80/90%: 48.8 / 79.6 / 90.5 (raw 34.4 / 61.4 / 75.2). The model is better than NESO on 22.3% of days. Full analysis: `docs/results/forecasting_report.md`.
+
+## EXP-005 · FES scenario grid + stress tests · 19 Nov 2026
+
+`uv run python -m energy_futures.experiments.scenarios` · 312 runs · outputs `outputs/scenarios/` · report `docs/results/scenarios_report.md`.
+
+- Peak increase vs 2024, median over weather years (ours / FES, GW): Holistic 2035 13.9 / 16.0, 2050 57.3 / 61.7; Electric Engagement 2050 69.8 / 85.3; Hydrogen Evolution 2050 67.1 / 64.1; Falling Behind 2050 31.1 / 48.7.
+- Peak net demand, median / worst (GW): Holistic 2035 46.0 / 48.7; 2050 77.2 / 82.2.
+- Cold, still week (9–15 Dec 2022), Holistic 2050: peak 108.2 GW, peak net 81.6 GW, 10.1 TWh net energy in 7 days.
+- Sensitivity, Holistic 2035 median peak: central 60.2, 30% unmanaged EV 71.2, hot-water 0.2 59.4 GW.
+- Known artefact: EV valley-filling gives zero EV at peak before ~2040 and flattens whole days after ~2040 (EV at peak 21–27 GW vs FES 8–14 GW).
