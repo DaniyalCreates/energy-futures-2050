@@ -45,3 +45,9 @@
 
 - Added the Streamlit dashboard `dashboard/app.py`: Overview, Forecasting (weekly forecast with calibrated intervals, accuracy, calibration, NESO by hour), Future scenarios (interactive pathway/year/weather-year engine runs, summary and stress tables), Flexibility decisions (value captured, CIs, single-day recomputation, sensitivity), Assumptions & limitations (renders the reports).
 - Added Streamlit + Plotly; 5 headless page-render tests (69 total). Pages checked visually via screenshots.
+
+## 2026-11-19 — Batch 8 (Reproducibility, reports, release preparation)
+
+- Reproducibility audit (fresh-clone rerun, data rebuild, dependency audit); GitHub Actions CI (Ubuntu + macOS).
+- Technical research report, KTP case study, release checklist with deployment instructions; README rewritten with key results.
+- Nothing published; pending Dani's release decisions.

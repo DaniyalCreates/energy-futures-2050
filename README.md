@@ -1,63 +1,65 @@
 # Energy Futures 2050
 
-Research prototype: **uncertainty-aware forecasting and risk-aware flexibility planning for Great Britain's electricity system.**
+**Uncertainty-aware forecasting and risk-aware flexibility planning for Great Britain's electricity system: an open, reproducible research prototype.**
 
-## Research question
+> **Research question:** can uncertainty-aware machine learning, combined with scenario simulation and constrained optimisation, make electricity flexibility planning more robust than conventional forecasting and deterministic decisions?
 
-Can uncertainty-aware machine learning, combined with scenario simulation and constrained optimisation, make electricity flexibility planning more robust than conventional forecasting and deterministic decision-making?
+## Key results (pre-registered experiments)
 
-The answer comes from experiments. A null or negative result is a valid outcome.
+| | Result |
+| --- | --- |
+| Day-ahead demand forecast (LightGBM, real weather forecasts) | **664 MW MAE (2.2%)**, 48% better than seasonal naive; test period 8 Mar 2024 – 31 Dec 2025 |
+| Versus NESO's operational forecast (National Demand) | **995 vs 653 MW**: NESO is more accurate |
+| Calibrated uncertainty (conformal) | 90% intervals cover **90.5%** of outcomes |
+| FES 2025 futures | Holistic Transition peak **+57 GW by 2050** (FES: +62 GW). A cold, still week needs ~10 TWh in 7 days in 2050 |
+| Battery decisions, share of perfect-foresight value | fixed rule **38%** · point forecast + LP **61%** · calibrated quantiles + CVaR **64%** |
+| Is risk-aware better? | Yes on average cost (significant); **not significantly** for tail risk |
 
-## Scope (initial prototype)
+**Answer so far:** optimising at all and forecast accuracy matter most. Uncertainty-awareness adds a small, consistent gain that grows when storage is scarce. Full reasoning: [`docs/technical_report.md`](docs/technical_report.md).
 
-| Engine | What it does | Horizon |
-| --- | --- | --- |
-| 1. Forecasting | Half-hourly GB national demand, day ahead; baselines, then gradient boosting | Measured against history |
-| 2. Scenarios | Demand and generation shapes for 2030-2050 built from NESO Future Energy Scenarios | Exploratory, not predictive |
-| 3. Uncertainty | Quantile forecasts, calibration, stress tests | Both |
-| 4. Optimisation | One aggregated GB battery plus demand response under physical constraints | Both |
-
-**What this is not:** a physical network model, a validated digital twin, or a prediction of the 2050 electricity system. All results are aggregated, system-level and stylised; limitations are documented alongside every result.
-
-## Data sources
-
-NESO Data Portal (NESO Open Data Licence), Open-Meteo / ERA5 (CC BY 4.0, free tier non-commercial), Elexon Insights. Full definitions and provenance: `docs/` (added in Batch 2).
+**What this is not:** a physical network model, a validated digital twin, or a prediction of the 2050 system. Costs are a stylised index, not money.
 
 ## Reproduce
 
-Requires [uv](https://docs.astral.sh/uv/) (`brew install uv` on macOS).
+Requires [uv](https://docs.astral.sh/uv/) (macOS: `brew install uv libomp`).
 
 ```bash
-uv sync          # builds .venv from the pinned uv.lock (Python 3.12)
-uv run pytest    # runs the test suite
-uv run python -m energy_futures.pipeline all   # download raw data + build the dataset
-uv run streamlit run dashboard/app.py          # research dashboard (reads saved experiment outputs)
+uv sync                                              # exact environment from uv.lock (Python 3.12)
+uv run pytest                                        # 69 tests (data-dependent ones skip until data exists)
+uv run python -m energy_futures.pipeline all         # download + build the dataset
+uv run python -m energy_futures.ingest.benchmarks    # NESO day-ahead forecasts, archived weather forecasts
+uv run python -m energy_futures.ingest.fes           # FES 2025 tables
+uv run streamlit run dashboard/app.py                # research dashboard (after running the experiments)
 ```
 
-Run commands from the project folder. The package sits at the top level (`energy_futures/`), so `python -m energy_futures...` works even when macOS hides the editable-install `.pth` file (D-029).
+The full experiment sequence is listed in [`docs/release_checklist.md`](docs/release_checklist.md#deployment-instructions) (about 45 minutes). Run commands from the project folder. The package sits at the top level (`energy_futures/`), so `python -m energy_futures...` works even when macOS hides the editable-install `.pth` file (D-029).
+
+## Documents
+
+| Document | Contents |
+| --- | --- |
+| [Technical report](docs/technical_report.md) | Question, related work, data, methods, results, limitations, future work |
+| [KTP case study](docs/ktp_case_study.md) | Business problem, contribution, hypothetical commercial use, skills |
+| [Forecasting](docs/results/forecasting_report.md) · [Scenarios](docs/results/scenarios_report.md) · [Optimisation](docs/results/optimisation_report.md) | Detailed results per phase |
+| [Data dictionary](docs/data_dictionary.md) · [Assumptions](docs/assumptions.md) | Definitions, provenance, every modelling assumption |
+| [Reproducibility audit](docs/reproducibility_audit.md) | Fresh-clone rerun vs recorded results |
+| `DECISIONS.md` · `EXPERIMENT_LOG.md` · `CHANGELOG.md` · `PROJECT_STATUS.md` | Decision log, experiment records, history, current state |
 
 ## Project layout
 
 ```text
-configs/        experiment configurations (YAML)
-data/           raw -> interim -> processed (git-ignored; regenerated by the pipeline)
-docs/           data dictionary, assumptions, literature review
-notebooks/      exploration only; nothing reported depends on them
-energy_futures/
-  ingest/ clean/ features/      data pipeline
-  forecast/                     Engine 1
-  scenarios/                    Engine 2
-  uncertainty/                  Engine 3
-  optimise/                     Engine 4
-  evaluate/                     metrics, comparisons, sensitivity
-tests/          automated checks (data quality, leakage, constraints)
-dashboard/      Streamlit research dashboard (Batch 7)
+configs/            experiment configurations (YAML), incl. pre-registered protocols
+energy_futures/     ingest/ clean/ features/ forecast/ uncertainty/ scenarios/ optimise/ evaluate/ experiments/
+dashboard/app.py    Streamlit research dashboard
+tests/              69 automated tests (leakage, calibration, energy conservation, LP physics, dashboard)
+docs/               reports, figures, data dictionary, assumptions
+data/, outputs/     git-ignored; regenerated by the pipeline and experiments
 ```
 
-## Project records
+## Data and licences
 
-`PROJECT_STATUS.md` (current state) · `DECISIONS.md` · `EXPERIMENT_LOG.md` · `CHANGELOG.md`
+- NESO Historic Demand, Day-Ahead Forecast Performance and FES 2025: NESO Open Data Licence. "Supported by National Energy SO Open Data".
+- Weather data by [Open-Meteo.com](https://open-meteo.com/) (ERA5 reanalysis and archived forecasts), CC BY 4.0. The free API tier is non-commercial.
+- Raw data is not redistributed; the pipeline downloads it. Code licence: to be confirmed before publication.
 
-## Licence and attribution
-
-Code licence to be chosen before publication. Data: "Supported by National Energy SO Open Data"; weather data by Open-Meteo.com (CC BY 4.0).
+Author: Daniyal Tariq (MSc AI & Data Science, University of Hull).

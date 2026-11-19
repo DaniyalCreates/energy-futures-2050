@@ -1,0 +1,25 @@
+# Continuous integration: install the exact locked environment and run the test suite on every
+# push and pull request. Data-dependent tests skip automatically (raw data is not in the repo and
+# must be downloaded with `uv run python -m energy_futures.pipeline download`).
+name: tests
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libomp (LightGBM on macOS)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+      - uses: astral-sh/setup-uv@v6
+      - name: Install locked environment
+        run: uv sync --locked
+      - name: Lockfile is up to date
+        run: uv lock --check
+      - name: Run tests
+        run: uv run --locked pytest -q

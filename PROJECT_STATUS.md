@@ -10,7 +10,8 @@ _Last updated: 2026-11-18_
 - **Batch 5 (Steps 31–36): COMPLETE.** EXP-005; report `docs/results/scenarios_report.md`; assumptions `docs/assumptions.md`.
 - **Batch 6 (Steps 37–42): COMPLETE.** EXP-006; report `docs/results/optimisation_report.md`.
 - **Batch 7 (Steps 43–46): COMPLETE.** `uv run streamlit run dashboard/app.py`.
-- **Next: Batch 8 (Steps 47–50), reproducibility audit, technical report, KTP case study, public-release prep.** Awaiting approval.
+- **Batch 8 (Steps 47–50): COMPLETE except publication**, which awaits Dani's 4 release decisions (`docs/release_checklist.md`).
+- **All 50 roadmap steps done.** The research prototype is complete.
 
 ## 2. Completed tasks and evidence
 | Step | Evidence |
@@ -23,7 +24,10 @@ _Last updated: 2026-11-18_
 | 15 Weather | `clean/weather.py`; aligned to period starts; equal-weight GB mean (D-012) |
 | 16 Saved and versioned | `data/processed/demand_weather.parquet` + `dataset_version.json` |
 
-## 3. Files (Batch 7)
+## 3. Files (Batch 8)
+.github/workflows/ci.yml; docs/{technical_report.md, ktp_case_study.md, reproducibility_audit.md, release_checklist.md}; README.md (rewritten).
+
+## 3-7. Files (Batch 7)
 dashboard/app.py; tests/test_dashboard.py; pyproject.toml/uv.lock (streamlit, plotly).
 
 ## 3-6. Files (Batch 6)
@@ -52,6 +56,7 @@ v1: 298,032 half-hours, 2009-01-01 to 2025-12-31 UTC, no gaps. Config hash e0446
 Descriptive facts: ND annual mean 35.9 → 26.2 GW and underlying demand 36.6 → 30.2 GW (2009 → 2025); daily temperature–demand correlation −0.78 (2019).
 
 ## 6. Tests
+Audit: fresh-clone rerun 58/59 identical (0.4 MW architecture difference); data rebuild identical; no known dependency vulnerabilities; CI simulation 58 passed / 11 skipped.
 69 passed (Batch 7, incl. 5 dashboard page-render tests). 64 passed (Batch 6). 59 passed (Batch 5). 50 passed (Batch 4). 45 passed natively on macOS (Batch 3 code). Earlier: 26 passed (Claude's sandbox on the Mac, 2026-11-18). Batch 1's 13 tests were verified natively on macOS.
 
 ## 7. Problems and open questions
@@ -63,9 +68,9 @@ Descriptive facts: ND annual mean 35.9 → 26.2 GW and underlying demand 36.6 �
 - Population weighting for weather is deferred (D-012).
 
 ## 8. Approved decisions
-DECISIONS.md D-001 to D-039.
+DECISIONS.md D-001 to D-041.
 
 ## 9. Next three tasks
-1. Batch 8, Step 47: reproducibility audit (fresh clone → uv sync → pipeline → experiments → identical numbers), dependency check, CI workflow.
-2. Batch 8, Step 48: technical research report (research question, literature context, data, methods, experiments, results, limitations, future work).
-3. Batch 8, Steps 49–50: KTP case study; security/secrets scan; publication checklist (needs Dani's approval to publish).
+1. Dani: decide the code licence (MIT recommended), commit email (keep / noreply / rewrite history), repo name and visibility, and dashboard hosting.
+2. On approval: create the private GitHub repo, push, confirm CI is green, then make it public after review.
+3. Optional research follow-ups (technical report §9): multi-site weather + solar forecast; wind/solar forecast uncertainty in decisions; multi-day storage optimisation.

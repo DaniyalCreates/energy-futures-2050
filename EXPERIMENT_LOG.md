@@ -65,3 +65,7 @@ C − B: mean daily cost −69 [−125, −25]; p95 −21 [−596, +186]; shortf
 Setting F (FES futures), C − B p95 negative in 3 of 4 cases; all CIs include 0. C ahead of B on every metric in all 8 historical sensitivity variants.
 
 Report: `docs/results/optimisation_report.md`. Outputs: `outputs/optimisation/`.
+
+## AUDIT-001 · Fresh-clone rerun · 19 Nov 2026
+
+All experiments rerun from a clean clone (36 min). 58/59 compared quantities identical; EXP-001 `linear_weather_PW` 1,088.8 vs 1,089.2 MW on x86 (the Mac reproduces 1,089.21). Data rebuild bit-identical. See `docs/reproducibility_audit.md`.
