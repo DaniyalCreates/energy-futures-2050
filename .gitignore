@@ -43,3 +43,6 @@ dist/
 
 # --- macOS ---
 .DS_Store
+
+# Frozen archives of earlier results (kept locally, never uploaded)
+outputs_archive/
