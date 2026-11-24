@@ -9,6 +9,42 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## CS-2b Stage 3 · 24 Nov 2026 · SANITY CHECK FAILED — evaluation stopped
+
+- **Goal:** Run `cs2_rolling_eval.py` once on real data and check sanity.
+- **Command:** `uv run python energy_futures/experiments/cs2_rolling_eval.py`
+- **Script commit at run time:** 7a073ce (CS-2b stage 2b)
+- **Runtime:** 27.1 s
+- **Result:** STOPPED — sanity check raised ValueError before writing selection.txt.
+- **Sanity check output:**
+
+  | Period | CS-1 reference | CS-2b baseline | Difference |
+  |--------|---------------|----------------|------------|
+  | 2023 (all HH) | 92.5% | 92.47% | −0.03 pp (not a failure condition) |
+  | 2024-03-08 to 2025-12-31 | 90.5% | **88.51%** | **−1.99 pp (exceeds ±0.5 pp tolerance)** |
+
+- **Root cause identified (not a code bug):** The original EXP-004 CQR calibration used
+  `Q = pd.concat([q23, qp[k]])` where `qp[k]` covered the full test period from
+  2024-01-01; only the slice from `fw0 = "2024-03-08"` onward was saved as
+  `quantiles_FW_raw.parquet`. CS-2b's `load_development_data()` loads this file and
+  `quantiles_2022_2023.parquet` (ending 2023-12-31), leaving a **67-day gap** in
+  raw_q (2024-01-01 to 2024-03-07). Those winter months carry high nonconformity scores;
+  their absence from the calibration window reduces the CQR correction level and therefore
+  coverage for 2024-25 days. The 2023 baseline matches CS-1 exactly (−0.03 pp), confirming
+  the calibration code itself is correct.
+- **Partial outputs written (before sanity check):** `outputs/v2_cs2_rolling/metrics_by_quarter.csv`,
+  `metrics_pooled.csv`, `data_quality_counts.csv`, `fallback_report.csv`.
+  `selection.txt` was NOT written (guard worked as designed).
+- **Decision needed from Dani — two options (neither changes a pre-registered method):**
+  1. **(Preferred)** Re-generate `quantiles_FW_raw.parquet` from 2024-01-01 by re-running
+     `uv run python -m energy_futures.experiments.advanced test` — this restores the original
+     calibration history. The model is already trained; re-running test() only re-applies
+     quantile prediction and rolling CQR, it does not retune any model.
+  2. **Alternatively**, update `load_development_data()` to also load the Q1-2024 slice
+     by extracting it from the full advanced.py pipeline (would require a new data file).
+- **Stages 4–7 are deferred pending resolution.**
+- **No 2026 data accessed. No pre-registered methods changed.**
+
 ## CS-2b stage 2b · 24 Nov 2026 · Eval script fixes before run
 
 - **Goal:** Harden `cs2_rolling_eval.py` before the first real data run; add three improvements
