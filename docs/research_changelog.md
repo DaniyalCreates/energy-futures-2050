@@ -9,7 +9,44 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
-## CS-2b Stages 3d-3f · 24 Nov 2026 · Option D: single Mac FW series (pending run)
+## CS-4 Stage 7 · 24 Nov 2026 · Statistical significance tests on frozen results
+
+- **Goal:** Apply DM tests and Holm correction to EXP-004 and EXP-006 frozen results;
+  document formally.
+- **DM test 1 — LightGBM FW vs naive_d7 (underlying demand, fw window 664 days):**
+  FW MAE 664 MW vs naive 1281 MW; DM = −11.67; p < 0.001. FW significantly better.
+- **DM test 2 — LightGBM FW vs NESO (ND, fw window 664 days):**
+  FW_ND MAE 995 MW vs NESO 653 MW; DM = +17.13; p < 0.001. NESO significantly better.
+- **Holm correction on C-vs-B bootstrap CIs (10 tests: 5 settings × 2 stats):**
+  Using pre-specified family (H1, H2): H1 (mean cost Historical 2024-25) survives
+  correction (p=0.007 < threshold 0.025); H2 (p95 cost) does not (p=0.91).
+  Using full conservative family: no test survives (smallest p=0.007 > threshold 0.005).
+  Consistent with EXP-006 published finding (D-038).
+- **Files:** `docs/results/statistical_tests.md` (new)
+- **No data or models changed; all inputs from frozen outputs/advanced/ and outputs/optimisation/.**
+
+## CS-4 Stage 6 · 24 Nov 2026 · CS-3 confirmation protocol (DRAFT)
+
+- **Goal:** Write the CS-3 protocol before any 2026 data is accessed.
+- **Selected method:** baseline (§7 selected baseline in CS-2b Stage 4). CS-3 is therefore
+  a consistency check, not a test of an improved method.
+- **Pass criteria (pre-declared):**
+  - Primary 1: 2026-Q1 overall Coverage_90 ∈ [87%, 95%]
+  - Primary 2: 2026-Q1 high-demand Coverage_90 ∈ [75%, 100%]
+- **Status:** DRAFT committed. Requires Dani's decision to initiate (download 2026 data).
+- **Files:** `docs/cs3_protocol.md` (new)
+
+## CS-2b Stage 5 · 24 Nov 2026 · Conditional calibration results report
+
+- **Goal:** Write rolling evaluation results and selection decision.
+- **Key findings:** Baseline retained. Pooled cold Coverage_90: baseline 86.3%, best
+  candidate (width_normalised) 88.3% (+1.99 pp; needed ≥ 3.0 pp). 2024-Q4 cold
+  coverage 62.5% (baseline) — worst quarter. High-demand fallback = 100% in most
+  quarters (< 20 high-demand days per 365-day window). Cloud-vs-Mac: mean diff ≈ 0,
+  raw Coverage_90 identical (75.15%).
+- **Files:** `docs/results/conditional_calibration.md` (new)
+
+## CS-2b Stages 3d-3f · 24 Nov 2026 · Option D: single Mac FW series
 
 - **Goal:** Replace the cloud-generated FW quantile file with a single consistent
   Mac-generated series for 2024-01-01..2025-12-31, used for both calibration and
@@ -20,16 +57,50 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
   Committed before any run.
 - **Stage 3e:** `regenerate_fw_quantiles.py` updated to save FULL Mac series
   (2024-01-01..2025-12-31) to `outputs/v2_cs2_rolling/inputs/quantiles_FW_raw_mac_2024-2025.parquet`
-  and write `outputs/v2_cs2_rolling/inputs/cloud_vs_mac.csv` (per-quantile diff stats,
-  raw Coverage_90, LightGBM/numpy/platform versions). Does NOT touch `outputs/advanced/`.
+  and write `outputs/v2_cs2_rolling/inputs/cloud_vs_mac.csv`. Script run time: 388.5 s.
+  cloud_vs_mac stats (2024-03-08+ rows): mean abs diff ≈ 0.0 MW for all quantiles; max = 113 MW
+  (isolated outlier); raw Coverage_90 identical cloud vs Mac (75.15%). Does not touch
+  `outputs/advanced/`.
 - **Stage 3f:** `conditional_calibration.load_development_data()` updated to use Mac series;
-  `SANITY_TOL_PP` updated to 1.0 in `cs2_rolling_eval.py`; new test added.
-- **Files:** `docs/cs2_preregistration.md`, `docs/research_changelog.md`,
-  `energy_futures/experiments/regenerate_fw_quantiles.py`,
-  `energy_futures/experiments/conditional_calibration.py`,
-  `energy_futures/experiments/cs2_rolling_eval.py`,
-  `tests/test_conditional_calibration.py`
-- **Result:** To be filled after re-run.
+  `SANITY_TOL_PP` updated to 1.0 in `cs2_rolling_eval.py`; new test added. 110 tests pass.
+- **Scripts committed at run time:** 304b7d8
+
+## CS-2b Stage 3 (re-run) · 24 Nov 2026 · Sanity check PASSED
+
+- **Command:** `uv run python energy_futures/experiments/cs2_rolling_eval.py`
+- **Script commit at run time:** 304b7d8  |  Mac series commit: 304b7d8
+- **Sanity check result:**
+
+  | Period | CS-1 reference | CS-2b baseline | Difference |
+  |--------|---------------|----------------|------------|
+  | 2023 | 92.5% | 92.47% | −0.03 pp (not a failure condition) |
+  | 2024-03-08..2025-12-31 | 90.5% | 90.51% | **+0.01 pp — PASS** |
+
+- **selected_method:** baseline (§7 selection, see Stage 4 entry below)
+- **Outputs written:** `outputs/v2_cs2_rolling/metrics_by_quarter.csv`,
+  `metrics_pooled.csv`, `data_quality_counts.csv`, `fallback_report.csv`,
+  `sanity_check.txt` (PASS), `selection.txt`
+- **Data quality:** 0 NaN-y rows dropped across all 11 quarters; 0 NaN-proxy days.
+
+## CS-2b Stage 4 · 24 Nov 2026 · Method selection (§7): baseline retained
+
+- **Result:** No candidate passed all four pre-registered selection rules.
+- **Pooled metrics (11 quarters combined):**
+
+  | Method | Coverage_90 all | Coverage_90 cold | Coverage_90 high | Width_90 MW | Winkler MW |
+  |--------|----------------|-----------------|-----------------|-------------|------------|
+  | baseline         | 91.1% | 86.3% | 85.8% | 2960 | 3694 |
+  | mondrian         | 90.3% | 87.6% | 85.7% | 2879 | 3689 |
+  | mondrian_extended| 90.2% | 85.5% | 85.4% | 2870 | 3692 |
+  | width_normalised | 90.9% | 88.3% | 88.0% | 3099 | 3781 |
+
+- **Rule-by-rule elimination:**
+  - **Mondrian:** Rule 2 fails — cold coverage 87.59% < baseline cold 86.26% + 3 = 89.26% (improvement only +1.33 pp; needs ≥ 3.0 pp)
+  - **Mondrian_extended:** Rule 2 fails — cold coverage 85.46% < 89.26% (actually −0.80 pp below baseline; fallback dominates for cold days when stratum has < 20 days)
+  - **Width_normalised:** Rule 2 fails — cold coverage 88.25% < 89.26% (improvement +1.99 pp; needs ≥ 3.0 pp). Rule 3 also fails: high_demand 88.05% < 85.81% + 3 = 88.81%.
+- **Why mondrian/extended fail:** Fallback report shows mondrian falls back to global correction 50-100% of cold days in most quarters (< 20 cold days in 365-day rolling window). Mondrian_extended cold coverage is below baseline, likely because mixing 2022-23 (observed-temperature proxy) and 2024-25 (forecast-temperature proxy) cold days degrades the strata-specific calibration.
+- **Conclusion:** Baseline retained. No confirmation run (CS-3) is needed with an improved method.
+- **No pre-registered thresholds or methods were changed.**
 
 ## CS-2b Stage 3 · 24 Nov 2026 · SANITY CHECK FAILED — evaluation stopped
 
