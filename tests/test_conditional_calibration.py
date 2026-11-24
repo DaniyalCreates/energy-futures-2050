@@ -252,10 +252,43 @@ def test_no_lookahead_all_methods():
 # ---------------------------------------------------------------------------
 
 def test_baseline_matches_rolling_cqr():
-    """apply_calibration_daily with method='baseline' must reproduce rolling_cqr exactly."""
-    raw_q, y, temp = _make_simple_data(n_days=50, actual=90.0)
-    apply_from = "2023-01-15"
+    """apply_calibration_daily with method='baseline' reproduces rolling_cqr exactly.
 
+    Uses seeded random quantiles and actuals (varied by half-hour and day), 75 days
+    spanning the 2023-03-26 BST spring-forward (clock change), window_days=30.
+
+    Sanity check: window_days=29 (baseline) vs window_days=30 (rolling_cqr) produces
+    different output, proving the test is sensitive to the window size.
+    """
+    rng = np.random.default_rng(42)
+    # 75 days starting 2023-02-01 — covers the 26 Mar 2023 BST spring-forward
+    n = 75 * 48
+    index = pd.date_range("2023-02-01", periods=n, freq="30min", tz="UTC")
+
+    # Monotone quantiles: cumulative increments from a random base
+    base = rng.uniform(10_000.0, 20_000.0, size=(n, 1))
+    deltas = rng.uniform(50.0, 500.0, size=(n, 6))
+    cum = np.hstack([np.zeros((n, 1)), np.cumsum(deltas, axis=1)])  # (n, 7)
+    raw_q = pd.DataFrame(
+        (base + cum).astype(float),
+        columns=["q05", "q10", "q25", "q50", "q75", "q90", "q95"],
+        index=index,
+    )
+
+    # Actuals vary by half-hour; some fall outside the interval to produce nonzero scores
+    y = pd.Series(
+        rng.uniform(raw_q["q05"].values * 0.85, raw_q["q95"].values * 1.15),
+        index=index,
+    )
+
+    # Warm temp proxy (not used by baseline, but required by apply_calibration_daily)
+    local = index.tz_convert("Europe/London")
+    temp = pd.Series({d.date(): 10.0 for d in pd.DatetimeIndex(pd.unique(local))})
+
+    # apply_from is ≥30 days after start → 30-day window is fully populated
+    apply_from = "2023-03-10"
+
+    # --- Main assertion: outputs are identical ---
     cal_b = apply_calibration_daily(
         raw_q, y, temp, "baseline", window_days=30, apply_from=apply_from
     )
@@ -263,13 +296,27 @@ def test_baseline_matches_rolling_cqr():
 
     for lo, hi in [("q05", "q95"), ("q10", "q90"), ("q25", "q75")]:
         np.testing.assert_array_almost_equal(
-            cal_b[lo].values, cal_cqr[lo].values, decimal=6,
-            err_msg=f"Mismatch on {lo}",
+            cal_b[lo].values, cal_cqr[lo].values, decimal=8,
+            err_msg=f"Mismatch on {lo}: baseline vs rolling_cqr",
         )
         np.testing.assert_array_almost_equal(
-            cal_b[hi].values, cal_cqr[hi].values, decimal=6,
-            err_msg=f"Mismatch on {hi}",
+            cal_b[hi].values, cal_cqr[hi].values, decimal=8,
+            err_msg=f"Mismatch on {hi}: baseline vs rolling_cqr",
         )
+
+    # --- Sanity check: window_days=29 (baseline) must differ from window_days=30 (rolling_cqr) ---
+    # This proves the test can detect a window-size bug.
+    cal_b_29 = apply_calibration_daily(
+        raw_q, y, temp, "baseline", window_days=29, apply_from=apply_from
+    )
+    any_diff = any(
+        not np.allclose(cal_b_29[col].values, cal_cqr[col].values)
+        for col in ["q05", "q95", "q10", "q90", "q25", "q75"]
+    )
+    assert any_diff, (
+        "Sanity check failed: window_days=29 (baseline) produced the same output as "
+        "window_days=30 (rolling_cqr) — the test cannot distinguish a wrong window size"
+    )
 
 
 # ---------------------------------------------------------------------------

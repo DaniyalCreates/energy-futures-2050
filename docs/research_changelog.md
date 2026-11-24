@@ -9,6 +9,34 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## CS-2b · 24 Nov 2026 · Rolling evaluation script + strengthened test (committed before any run)
+
+- **Goal:** Pre-register the evaluation script (CS-2b) and strengthen the baseline-match test
+  before any real evaluation is run.
+- **Files added:**
+  - `energy_futures/experiments/cs2_rolling_eval.py` — evaluation script committed before any run:
+    loads development data; applies all four methods over 2023-01-01 to 2025-12-31 with
+    window_days=365 from EVAL_START; computes §6 metrics (Coverage_90/80/50 overall, cold
+    proxy-based, high-demand §6.1, winter, bank holiday, and outcome-based cold labelled
+    "reporting only"; Width_90; Winkler; Pinball); block-bootstrap 95% CIs by calendar day,
+    1,000 resamples, seed 42; NaN-proxy day counts per quarter; calls select_method on pooled
+    results; writes to outputs/v2_cs2_rolling/ only.
+  - `tests/test_cs2_rolling_eval.py` — 3 end-to-end tests on synthetic data:
+    - `test_evaluate_smoke` — files written, return dict well-formed, all 4 methods present.
+    - `test_evaluate_nan_proxy_counted` — NaN proxy days reported correctly per quarter.
+    - `test_evaluate_high_demand_threshold_consistent` — high-demand n_days identical across
+      methods (threshold uses raw q50 over the full window, same for all methods).
+- **Files modified:**
+  - `tests/test_conditional_calibration.py` — `test_baseline_matches_rolling_cqr` strengthened:
+    now uses seeded random quantiles and actuals (not constant), 75 days crossing the 2023-03-26
+    BST spring-forward (clock change), window_days=30. Asserts exact match (decimal=8).
+    Sanity assertion: window_days=29 on the baseline side vs window_days=30 on the rolling_cqr
+    side produces different output, confirming the test can detect a wrong window size.
+- **Tests:** `uv run pytest -q` → 99 passed, 0 failed.
+- **No evaluation run.** No 2026 data accessed. outputs_archive/ untouched.
+- **Remaining uncertainty:** `cs2_rolling_eval.evaluate()` has not been run on real data yet.
+  Correctness will be verified in CS-2b run (requires Dani's approval).
+
 ## CS-2a review · 24 Nov 2026 · Amendment clarification + 5 new tests
 
 - **Goal:** Pre-registration clarification and additional tests following CS-2a review.
