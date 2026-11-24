@@ -291,3 +291,28 @@ out-of-sample results (all 11 quarters, pooled). Rules are applied in order:
   after viewing any CS-2 results.
 - Do not modify `outputs_archive/v1_5db4552/`.
 - Do not commit to `main` or push to GitHub.
+
+---
+
+## 11. Amendment 1 (2026-11-24, before any CS-2 code or results)
+
+**Timing correction found in external review. No code or results existed at the time of
+this amendment.**
+
+At 09:00 on D-1 only days ending by D-2 are fully observed. The existing rolling CQR
+uses `task.train_cutoff(D)` = 09:00 local D-1 − 30-min publication lag − 30-min period
+= **08:00 local on D-1**; the last half-hour in the window is the 08:00–08:30 slot on
+D-1, so the last fully observed calendar day is **D-2**.
+
+Therefore:
+
+(i) **Calibration window W_t ends at D-2** (the last day fully known at issue time),
+matching the existing CQR cutoff. References to "ending D-1" in §3, §4, and §5 are
+superseded by this.
+
+(ii) **2022-23 temperature proxy is the D-2 observed GB daily mean temperature**, not
+D-1 as stated in §3. D-1 observed temperature is not fully available at 09:00 on D-1
+(only the first ~8.5 hours have elapsed).
+
+These override §3, §4, and §5 where they conflict. **Reason:** timing error found in
+external review; no code or results existed.

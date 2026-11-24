@@ -9,6 +9,17 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## CS-2 pre-registration Amendment 1 · 24 Nov 2026 · Timing correction
+
+- **Goal:** Correct a timing error in the pre-registration before any CS-2 code is written.
+- **What changed:** Appended `## 11. Amendment 1` to `docs/cs2_preregistration.md`.
+  - W_t now ends at D-2 (last fully observed day at issue time 09:00 D-1), not D-1.
+  - 2022-23 temperature proxy is D-2 observed GB daily mean, not D-1 observed.
+  - Overrides §3, §4, §5 where they conflict.
+- **Reason:** External review identified that `task.train_cutoff(D)` = 08:00 local D-1,
+  meaning D-1 is only partially observed at issue time; last full day is D-2.
+- **No code written or run.** No results changed. `docs/cs2_preregistration.md` only.
+
 ## CS-1 · 21 Nov 2026 · Coverage diagnostic report
 
 - **Goal:** Measure empirical coverage of the existing 50/80/90% CQR prediction intervals broken down by operating condition (cold days, winter, bank holidays, Christmas, top-5% demand, time of day, month, year). Diagnostic only — no new methods, no 2026 data.
