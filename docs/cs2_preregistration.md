@@ -324,3 +324,41 @@ W_t contains all half-hours with start ≤ `task.train_cutoff(D)` (08:00 local D
 Amendment 1(i) referred only to complete calendar days; day-level quantities
 (temperature proxy) use only complete days. Missing temperature proxy (NaN) → day is
 treated as not cold; the number of NaN-proxy days is reported per quarter.
+
+---
+
+## 12. Amendment 2 (2026-11-24)
+
+**Timing:** Written after seeing only the baseline sanity check number (2024-25: 88.51%
+vs CS-1 90.5%; 2023: 92.47% vs CS-1 92.5%), before any candidate method results.
+
+**Finding:** The CS-2b baseline sanity check failed: 2024-25 baseline Coverage_90 =
+88.51% (reference 90.5%, diff = −1.99 pp, exceeds ±0.5 pp tolerance). 2023 baseline =
+92.47% (reference 92.5%, diff = −0.03 pp — within tolerance and not a failure condition).
+
+**Root cause:** `outputs/advanced/test/quantiles_FW_raw.parquet` starts 2024-03-08.
+The original EXP-004 CQR calibrated 2024-25 predictions using FW quantiles from
+`t0 = "2024-01-01"` (line 128 of `advanced.py`), but only the slice from
+`fw_comparison_start = "2024-03-08"` was saved to the parquet file (line 135). Those
+67 winter days (2024-01-01 to 2024-03-07) carry high nonconformity scores; their absence
+from the CS-2b calibration history reduces the CQR correction level for all 2024-25
+evaluation days. The 2023 coverage match (−0.03 pp) confirms the calibration code is
+correct — the fault is a data-availability gap, not a methodological error.
+
+**Fix:** Regenerate the missing 2024-01-01..2024-03-07 FW quantiles using the identical
+model and configuration (`GBMQuantile(True, start_pw)`, `quantile_refit = "QS"`,
+`random_state = 42`). Save to
+`outputs/v2_cs2_rolling/inputs/quantiles_FW_raw_from_2024-01-01.parquet`. Use for
+calibration history only, never for evaluation (the evaluation period from §5 is
+unchanged; it still starts at 2024-Q2 for the 2024-25 segment, and the 2024-Q1 calibration
+window already starts at 2024-03-08). A determinism check is run after regeneration:
+rows from 2024-03-08 onward must equal the existing `quantiles_FW_raw.parquet` to within
+1e-6 (absolute); if they do not, the script stops and reports.
+
+Note: those 67 days' predictions were made with incomplete forecast-weather inputs
+(temperature archive starts 2024-02-05; radiation archive starts 2024-03-07), exactly
+as in the original EXP-004 method — the original CQR used those same incomplete inputs.
+
+**What does not change:** No candidate method definition, threshold, or selection
+criterion is modified. The evaluation quarters and evaluation period (§5) are unchanged.
+The fix restores the calibration history that the original EXP-004 CQR always used.
