@@ -316,3 +316,11 @@ D-1 as stated in §3. D-1 observed temperature is not fully available at 09:00 o
 
 These override §3, §4, and §5 where they conflict. **Reason:** timing error found in
 external review; no code or results existed.
+
+### Amendment 1 clarification (2026-11-24, before any CS-2 results)
+
+W_t contains all half-hours with start ≤ `task.train_cutoff(D)` (08:00 local D-1) and
+> cutoff − 365 days, identical to the existing CQR. The phrase "ends at D-2" in
+Amendment 1(i) referred only to complete calendar days; day-level quantities
+(temperature proxy) use only complete days. Missing temperature proxy (NaN) → day is
+treated as not cold; the number of NaN-proxy days is reported per quarter.

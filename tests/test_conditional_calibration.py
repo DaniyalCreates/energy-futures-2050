@@ -6,6 +6,7 @@ Uses synthetic data only — no real data files needed.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from energy_futures.experiments.conditional_calibration import (
@@ -14,7 +15,11 @@ from energy_futures.experiments.conditional_calibration import (
     calibrate_mondrian,
     calibrate_width_normalised,
     select_method,
+    apply_calibration_daily,
+    load_development_data,
 )
+from energy_futures.uncertainty.calibration import rolling_cqr
+from energy_futures.forecast import task
 
 
 # ---------------------------------------------------------------------------
@@ -178,3 +183,189 @@ def test_select_method_no_passing_candidates_returns_baseline():
         },
     }
     assert select_method(results) == "baseline"
+
+
+# ---------------------------------------------------------------------------
+# Helper for apply_calibration_daily tests
+# ---------------------------------------------------------------------------
+
+def _make_simple_data(
+    n_days: int = 50,
+    start: str = "2023-01-01",
+    actual: float = 90.0,
+    temp_val: float = 10.0,
+) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+    """Return (raw_q, y, temp_series) for apply_calibration_daily tests.
+
+    Quantiles: q05=20, q10=25, q25=35, q50=50, q75=65, q90=75, q95=80 (constant).
+    With actual=90 (outside q95=80), the 90% CQR score = max(20-90, 90-80) = 10.
+    temp_series uses local date keys (datetime.date).
+    """
+    n = n_days * 48
+    index = pd.date_range(start, periods=n, freq="30min", tz="UTC")
+    raw_q = pd.DataFrame(
+        {"q05": 20.0, "q10": 25.0, "q25": 35.0, "q50": 50.0,
+         "q75": 65.0, "q90": 75.0, "q95": 80.0},
+        index=index,
+        dtype=float,
+    )
+    y = pd.Series(actual, index=index)
+    local = index.tz_convert("Europe/London")
+    temp = pd.Series({d.date(): temp_val for d in local})
+    return raw_q, y, temp
+
+
+# ---------------------------------------------------------------------------
+# (a) No look-ahead
+# ---------------------------------------------------------------------------
+
+def test_no_lookahead_all_methods():
+    """Modifying actuals strictly after the 08:00 D-1 cutoff must not change day D's intervals."""
+    raw_q, y, temp = _make_simple_data(n_days=50, actual=90.0, temp_val=10.0)
+    days_loc = pd.Series(
+        raw_q.index.tz_convert("Europe/London").normalize().tz_localize(None),
+        index=raw_q.index,
+    )
+    D_local = sorted(days_loc.unique())[-1]
+    D_rows = raw_q.index[days_loc == D_local]
+    # train_cutoff expects a tz-naive timestamp (it localises internally)
+    cutoff = task.train_cutoff(pd.Timestamp(D_local))
+
+    for method in ["baseline", "mondrian", "mondrian_extended", "width_normalised"]:
+        cal_before = apply_calibration_daily(raw_q, y, temp, method, window_days=30)
+
+        y_mod = y.copy()
+        y_mod[y_mod.index > cutoff] = 999_999.0  # wildly different post-cutoff actuals
+
+        cal_after = apply_calibration_daily(raw_q, y_mod, temp, method, window_days=30)
+
+        for col in ["q05", "q95"]:
+            np.testing.assert_array_equal(
+                cal_before.loc[D_rows, col].values,
+                cal_after.loc[D_rows, col].values,
+                err_msg=f"method={method!r}, col={col!r}: lookahead detected",
+            )
+
+
+# ---------------------------------------------------------------------------
+# (b) Baseline equals existing rolling_cqr
+# ---------------------------------------------------------------------------
+
+def test_baseline_matches_rolling_cqr():
+    """apply_calibration_daily with method='baseline' must reproduce rolling_cqr exactly."""
+    raw_q, y, temp = _make_simple_data(n_days=50, actual=90.0)
+    apply_from = "2023-01-15"
+
+    cal_b = apply_calibration_daily(
+        raw_q, y, temp, "baseline", window_days=30, apply_from=apply_from
+    )
+    cal_cqr = rolling_cqr(y, raw_q, apply_from=apply_from, window_days=30)
+
+    for lo, hi in [("q05", "q95"), ("q10", "q90"), ("q25", "q75")]:
+        np.testing.assert_array_almost_equal(
+            cal_b[lo].values, cal_cqr[lo].values, decimal=6,
+            err_msg=f"Mismatch on {lo}",
+        )
+        np.testing.assert_array_almost_equal(
+            cal_b[hi].values, cal_cqr[hi].values, decimal=6,
+            err_msg=f"Mismatch on {hi}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# (c) Candidate C extended cold window
+# ---------------------------------------------------------------------------
+
+def test_mondrian_extended_uses_and_falls_back():
+    """Candidate C uses extended cold scores when ≥20 past cold days exist; falls back otherwise."""
+    WD = 30  # small window to keep test fast
+    n_warm = WD + 5  # more warm days than WD so the standard window is fully populated
+
+    for n_cold, expect_fallback in [(25, False), (10, True)]:
+        n_total = n_cold + n_warm + 1  # +1 for the cold target day D
+        n = n_total * 48
+        index = pd.date_range("2022-01-01", periods=n, freq="30min", tz="UTC")
+        days_loc = pd.Series(
+            index.tz_convert("Europe/London").normalize().tz_localize(None),
+            index=index,
+        )
+        unique_days = sorted(days_loc.unique())
+        cold_start_days = set(unique_days[:n_cold])
+        target_day = unique_days[-1]
+
+        raw_q = pd.DataFrame(
+            {"q05": 20.0, "q10": 25.0, "q25": 35.0, "q50": 50.0,
+             "q75": 65.0, "q90": 75.0, "q95": 80.0},
+            index=index, dtype=float,
+        )
+
+        # actual=90 on cold days → 90% score = max(20-90, 90-80) = 10
+        # actual=50 on warm days → 90% score = max(20-50, 50-80) = -30
+        actual_arr = np.where(days_loc.isin(cold_start_days), 90.0, 50.0)
+        actual_arr[days_loc == target_day] = 90.0  # target day also cold
+        y = pd.Series(actual_arr.astype(float), index=index)
+
+        temp = pd.Series({
+            d.date(): 2.0 if (d in cold_start_days or d == target_day) else 10.0
+            for d in unique_days
+        })
+
+        target_rows = raw_q.index[days_loc == target_day]
+
+        cal_ext = apply_calibration_daily(raw_q, y, temp, "mondrian_extended", window_days=WD)
+        cal_mon = apply_calibration_daily(raw_q, y, temp, "mondrian", window_days=WD)
+
+        q95_ext = cal_ext.loc[target_rows, "q95"].iloc[0]
+        q95_mon = cal_mon.loc[target_rows, "q95"].iloc[0]
+
+        if expect_fallback:
+            # < 20 past cold days: both fall back to the same global (warm) correction
+            assert q95_ext == pytest.approx(q95_mon, abs=0.01), (
+                f"n_cold={n_cold}: extended should fall back to same correction as mondrian"
+            )
+        else:
+            # ≥ 20 past cold days: extended uses cold scores (c≈10 → q95≈90)
+            assert q95_ext == pytest.approx(90.0, abs=1.0), (
+                f"n_cold={n_cold}: extended should use cold scores from outside the window"
+            )
+            # mondrian: 0 cold days in standard window → falls back to global warm (c≈−30 → q95≈50)
+            assert q95_mon == pytest.approx(50.0, abs=1.0), (
+                f"n_cold={n_cold}: mondrian should fall back to global (warm) correction"
+            )
+
+
+# ---------------------------------------------------------------------------
+# (d) 2026 guard
+# ---------------------------------------------------------------------------
+
+def test_load_development_data_2026_guard(monkeypatch):
+    """load_development_data raises ValueError when any quantile timestamp is after 2025."""
+    idx_2026 = pd.date_range("2026-01-01", periods=48, freq="30min", tz="UTC")
+    fake_q = pd.DataFrame(
+        {c: 50.0 for c in ["q05", "q10", "q25", "q50", "q75", "q90", "q95"]},
+        index=idx_2026,
+    )
+    monkeypatch.setattr(pd, "read_parquet", lambda path, **kw: fake_q)
+
+    with pytest.raises(ValueError, match="2026"):
+        load_development_data()
+
+
+# ---------------------------------------------------------------------------
+# (e) NaN temperature proxy is never cold
+# ---------------------------------------------------------------------------
+
+def test_nan_temp_proxy_never_cold():
+    """NaN temp proxy must not be classified as 'cold' (NaN < 3 is False in IEEE 754)."""
+    # NaN with low demand → "normal"
+    result = assign_stratum(None, temp_proxy=np.nan, max_q50=1_000.0, threshold_95=20_000.0)
+    assert result == "normal"
+    assert result != "cold"
+
+    # NaN with high demand → "high_demand"
+    result_high = assign_stratum(None, temp_proxy=np.nan, max_q50=25_000.0, threshold_95=20_000.0)
+    assert result_high == "high_demand"
+    assert result_high != "cold"
+
+    # float("nan") behaves identically to np.nan
+    assert assign_stratum(None, temp_proxy=float("nan"), max_q50=1_000.0, threshold_95=20_000.0) != "cold"

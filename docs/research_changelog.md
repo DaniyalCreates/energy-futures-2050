@@ -9,6 +9,31 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## CS-2a review · 24 Nov 2026 · Amendment clarification + 5 new tests
+
+- **Goal:** Pre-registration clarification and additional tests following CS-2a review.
+- **Files changed:**
+  - `docs/cs2_preregistration.md` — appended "Amendment 1 clarification" under §11:
+    W_t spans start ≤ train_cutoff (08:00 D-1) and > cutoff − 365 days; "ends at D-2"
+    referred only to complete calendar days (temperature proxy); NaN proxy → not cold,
+    NaN-proxy day count reported per quarter.
+  - `tests/test_conditional_calibration.py` — 5 new tests added:
+    - `test_no_lookahead_all_methods` — actuals after 08:00 D-1 cutoff do not affect
+      day D's calibrated interval, for all four methods.
+    - `test_baseline_matches_rolling_cqr` — apply_calibration_daily baseline reproduces
+      the existing rolling_cqr output on the same synthetic input.
+    - `test_mondrian_extended_uses_and_falls_back` — Candidate C uses cold scores from
+      outside the standard window when ≥20 past cold days exist; falls back to global
+      when fewer than 20.
+    - `test_load_development_data_2026_guard` — raises ValueError when a 2026 timestamp
+      is present in the quantile data.
+    - `test_nan_temp_proxy_never_cold` — NaN temperature proxy is never classified "cold".
+  - `energy_futures/experiments/conditional_calibration.py` — one-line bug fix:
+    `day_ts = pd.Timestamp(day)` (tz-naive) instead of `pd.Timestamp(day, tz=TZ)`;
+    `task.train_cutoff` calls `tz_localize` internally and requires a tz-naive input.
+- **Tests:** `uv run pytest -q` → 96 passed, 0 failed (14 in test_conditional_calibration.py).
+- **No evaluation run.** No 2026 data accessed.
+
 ## CS-2a · 24 Nov 2026 · Conditional calibration method code
 
 - **Goal:** Implement all four calibration methods from the CS-2 pre-registration.

@@ -247,7 +247,7 @@ def apply_calibration_daily(
     grouped = out.groupby(days_local.reindex(out.index)).groups
 
     for day, rows in grouped.items():
-        day_ts = pd.Timestamp(day, tz=TZ)
+        day_ts = pd.Timestamp(day)  # tz-naive; train_cutoff expects this and localizes internally
         cutoff = task.train_cutoff(day_ts)
         window_start = cutoff - pd.Timedelta(days=window_days)
 
