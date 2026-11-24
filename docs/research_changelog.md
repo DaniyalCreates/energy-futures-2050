@@ -9,6 +9,37 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## CS-2b stage 2b · 24 Nov 2026 · Eval script fixes before run
+
+- **Goal:** Harden `cs2_rolling_eval.py` before the first real data run; add three improvements
+  pre-committed as pre-registration (no results seen yet).
+- **Files modified:**
+  - `energy_futures/experiments/cs2_rolling_eval.py` — three additions (a–c):
+    - **(a) NaN y handling:** `_add_hh_metrics` now drops half-hours with missing actual demand
+      before computing any metric. Count of dropped half-hours reported per quarter and method in
+      `data_quality_counts.csv` (renamed from `nan_proxy_counts.csv`; also retains
+      `n_nan_proxy_days`).
+    - **(b) Sanity check in `run()`:** `_sanity_check()` function computes baseline Coverage_90 on
+      2024-03-08..2025-12-31 (expected ≈90.5%) and on 2023 (expected ≈92.5%); writes
+      `sanity_check.txt` with CS-1 reference values alongside CS-2b values; raises `ValueError`
+      if the 2024-25 value differs from 90.5% by more than 0.5 pp. `selection.txt` is written
+      by `run()` only AFTER the sanity check passes (i.e. `evaluate()` no longer writes it).
+    - **(c) Fallback report (reporting only):** `_compute_fallback_summary()` computes, for each
+      evaluation day, whether mondrian and mondrian_extended fell back to the global correction
+      (stratum count < 20 days in window); `_fallback_by_quarter()` aggregates to per-quarter
+      per-stratum share; written to `fallback_report.csv`. No calibration is changed.
+  - `tests/test_cs2_rolling_eval.py` — 10 new tests covering (a)–(c):
+    - `test_nan_y_dropped_before_metrics`, `test_nan_y_no_effect_when_zero`
+    - `test_sanity_check_passes`, `test_sanity_check_fails_on_large_deviation`,
+      `test_sanity_check_2023_not_a_failure`, `test_sanity_check_nan_raises`,
+      `test_sanity_data_in_result`
+    - `test_fallback_report_exists`, `test_fallback_shares_in_range`,
+      `test_fallback_extended_cold_le_mondrian_cold`
+    - Existing tests updated for renamed file (`data_quality_counts.csv`) and removed
+      `selection.txt` from `evaluate()` assertions.
+- **Tests:** `uv run pytest -q` → 109 passed, 0 failed.
+- **No evaluation run.** No 2026 data accessed.
+
 ## CS-2b · 24 Nov 2026 · Rolling evaluation script + strengthened test (committed before any run)
 
 - **Goal:** Pre-register the evaluation script (CS-2b) and strengthen the baseline-match test
