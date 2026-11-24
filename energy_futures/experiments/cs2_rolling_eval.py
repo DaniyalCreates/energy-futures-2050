@@ -49,9 +49,11 @@ OUT_DIR = REPO / "outputs" / "v2_cs2_rolling"
 DEMAND_PATH = REPO / "data" / "processed" / "demand_weather.parquet"
 
 # CS-1 reference coverage values used in the sanity check (§ sanity check)
-CS1_COV_2024_25 = 90.5   # EXP-004 / CS-1 overall 2024-25
+CS1_COV_2024_25 = 90.5   # EXP-004 / CS-1 overall 2024-25 (cloud-generated Batch 4)
 CS1_COV_2023 = 92.5      # EXP-003 / CS-1 overall 2023 (rounded from 92.47%)
-SANITY_TOL_PP = 0.5      # maximum permitted deviation for 2024-25
+# Amendment 2 addendum: tolerance widened from 0.5 pp to 1.0 pp to allow for the
+# Mac/cloud prediction difference (see §12 addendum in cs2_preregistration.md).
+SANITY_TOL_PP = 1.0      # maximum permitted deviation for 2024-25
 
 _TAUS = [0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95]
 _QCOLS = ["q05", "q10", "q25", "q50", "q75", "q90", "q95"]

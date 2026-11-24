@@ -382,8 +382,48 @@ def test_mondrian_extended_uses_and_falls_back():
 
 
 # ---------------------------------------------------------------------------
-# (d) 2026 guard
+# (d) 2026 guard and Mac-series path
 # ---------------------------------------------------------------------------
+
+def test_load_development_data_uses_mac_fw_series(monkeypatch):
+    """load_development_data() must read FW quantiles from the Mac series path
+    (v2_cs2_rolling/inputs/quantiles_FW_raw_mac_2024-2025.parquet),
+    not from the cloud Batch 4 path (outputs/advanced/test/quantiles_FW_raw.parquet).
+    Amendment 2 addendum requirement.
+    """
+    captured = []
+
+    def patched_read_parquet(path, **kw):
+        captured.append(str(path))
+        # Return minimal valid data so the function can proceed past the parquet reads
+        idx = pd.date_range("2024-01-01", periods=48, freq="30min", tz="UTC")
+        cols_q = ["q05", "q10", "q25", "q50", "q75", "q90", "q95"]
+        if "demand_weather" in str(path):
+            demand_cols = kw.get("columns", ["underlying_demand", "temperature_2m_gb_mean"])
+            return pd.DataFrame({c: 30_000.0 for c in demand_cols}, index=idx)
+        return pd.DataFrame({c: 30_000.0 for c in cols_q}, index=idx)
+
+    monkeypatch.setattr(pd, "read_parquet", patched_read_parquet)
+    # _load_forecast_temp_daily uses open()/json — may fail on CI without data files,
+    # but parquet reads occur before that call; we capture paths then ignore any exception.
+    try:
+        load_development_data()
+    except Exception:
+        pass
+
+    mac_path_used = any("quantiles_FW_raw_mac_2024-2025" in p for p in captured)
+    cloud_path_used = any(
+        "quantiles_FW_raw.parquet" in p and "advanced" in p for p in captured
+    )
+    assert mac_path_used, (
+        f"Mac series path (quantiles_FW_raw_mac_2024-2025) not accessed. "
+        f"Paths accessed: {captured}"
+    )
+    assert not cloud_path_used, (
+        f"Cloud Batch 4 path (outputs/advanced/test/quantiles_FW_raw.parquet) must not "
+        f"be accessed in CS-2b. Paths accessed: {captured}"
+    )
+
 
 def test_load_development_data_2026_guard(monkeypatch):
     """load_development_data raises ValueError when any quantile timestamp is after 2025."""

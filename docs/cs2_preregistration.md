@@ -362,3 +362,26 @@ as in the original EXP-004 method — the original CQR used those same incomplet
 **What does not change:** No candidate method definition, threshold, or selection
 criterion is modified. The evaluation quarters and evaluation period (§5) are unchanged.
 The fix restores the calibration history that the original EXP-004 CQR always used.
+
+**Addendum (2026-11-24 — after determinism check, before seeing any new Coverage_90 value):**
+Determinism check failed: Mac re-run differs from the cloud-generated Batch 4 file by up
+to 113 MW (architecture-dependent LightGBM parallelism; same code, config, seed and
+lockfile). The original `quantiles_FW_raw.parquet` was generated in Batch 4 in Claude's
+cloud workspace (file date 2026-11-19); the Mac cannot reproduce it exactly.
+
+Resolution: CS-2 uses ONE consistent Mac-generated FW quantile series for
+2024-01-01..2025-12-31 for all methods (calibration and evaluation). The Mac series is
+saved to `outputs/v2_cs2_rolling/inputs/quantiles_FW_raw_mac_2024-2025.parquet` and
+replaces `quantiles_FW_raw.parquet` for CS-2b (the original cloud file is untouched and
+remains the reported Batch 4 result). 2022-23 quantiles are unchanged (`quantiles_2022_2023.parquet`
+was generated on the Mac in validation, and 2023 baseline reproduced CS-1 within 0.03 pp).
+
+The cloud-vs-Mac prediction difference is recorded in
+`outputs/v2_cs2_rolling/inputs/cloud_vs_mac.csv` (per-quantile mean/P99/max absolute
+difference in MW; raw Coverage_90 for cloud vs Mac over 2024-03-08..2025-12-31) and
+reported as a reproducibility finding in `docs/results/conditional_calibration.md`.
+
+Sanity check threshold updated (pre-registered before seeing the new value): the
+Mac-baseline 2024-03-08..2025-12-31 Coverage_90 is compared to CS-1's 90.5%; evaluation
+stops if |difference| > **1.0 pp** (widened from 0.5 pp to allow for the Mac/cloud
+prediction difference). The 2023 comparison is unchanged (reported, not a failure condition).

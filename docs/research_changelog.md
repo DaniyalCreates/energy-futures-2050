@@ -9,20 +9,26 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
-## CS-2b Stage 3c · 24 Nov 2026 · Amendment 2 data fix and re-run (pending)
+## CS-2b Stages 3d-3f · 24 Nov 2026 · Option D: single Mac FW series (pending run)
 
-- **Goal:** Restore the 67-day calibration gap (2024-01-01..2024-03-07) that caused the
-  Stage 3 sanity-check failure. Three sub-stages:
-  - 3a: Append Amendment 2 to `docs/cs2_preregistration.md` documenting root cause and fix.
-  - 3b: `energy_futures/experiments/regenerate_fw_quantiles.py` — re-runs the same
-    `GBMQuantile(True, start_pw)` backtest over 2024-01-01..2025-12-31, checks
-    determinism (rows from 2024-03-08 must match existing file, max abs diff < 1e-6),
-    saves gap slice 2024-01-01..2024-03-07 to
-    `outputs/v2_cs2_rolling/inputs/quantiles_FW_raw_from_2024-01-01.parquet`.
-    Does NOT touch `outputs/advanced/`.
-  - 3c: `conditional_calibration.load_development_data()` updated to include gap rows.
-    Helper `_apply_gap_quantiles` extracted and tested.
-- **Files:** `docs/cs2_preregistration.md` (Amendment 2), `energy_futures/experiments/regenerate_fw_quantiles.py` (new), `energy_futures/experiments/conditional_calibration.py` (gap loading), `tests/test_conditional_calibration.py` (2 new tests)
+- **Goal:** Replace the cloud-generated FW quantile file with a single consistent
+  Mac-generated series for 2024-01-01..2025-12-31, used for both calibration and
+  evaluation. This resolves the 67-day gap AND the cloud/Mac architecture inconsistency
+  discovered in the STAGE 3b determinism check (113 MW diff, LightGBM parallelism).
+- **Stage 3d:** §12 addendum appended to `docs/cs2_preregistration.md` — documents
+  determinism failure and new resolution; updates sanity check tolerance to 1.0 pp.
+  Committed before any run.
+- **Stage 3e:** `regenerate_fw_quantiles.py` updated to save FULL Mac series
+  (2024-01-01..2025-12-31) to `outputs/v2_cs2_rolling/inputs/quantiles_FW_raw_mac_2024-2025.parquet`
+  and write `outputs/v2_cs2_rolling/inputs/cloud_vs_mac.csv` (per-quantile diff stats,
+  raw Coverage_90, LightGBM/numpy/platform versions). Does NOT touch `outputs/advanced/`.
+- **Stage 3f:** `conditional_calibration.load_development_data()` updated to use Mac series;
+  `SANITY_TOL_PP` updated to 1.0 in `cs2_rolling_eval.py`; new test added.
+- **Files:** `docs/cs2_preregistration.md`, `docs/research_changelog.md`,
+  `energy_futures/experiments/regenerate_fw_quantiles.py`,
+  `energy_futures/experiments/conditional_calibration.py`,
+  `energy_futures/experiments/cs2_rolling_eval.py`,
+  `tests/test_conditional_calibration.py`
 - **Result:** To be filled after re-run.
 
 ## CS-2b Stage 3 · 24 Nov 2026 · SANITY CHECK FAILED — evaluation stopped

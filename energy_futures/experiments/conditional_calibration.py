@@ -79,12 +79,18 @@ def load_development_data() -> tuple[pd.DataFrame, pd.Series, pd.Series]:
     temp_proxy  : Series (local date index) temperature proxy for each forecast day D:
                   D-2 observed GB mean for 2022-23 (Amendment 1); archived ~48 h-ahead
                   forecast for 2024-25.
+
+    FW quantile source (Amendment 2 addendum):
+      2024-01-01..2025-12-31 uses the Mac-generated series
+      (outputs/v2_cs2_rolling/inputs/quantiles_FW_raw_mac_2024-2025.parquet),
+      which replaces the cloud-generated Batch 4 file for CS-2b. The cloud file is
+      untouched and remains the reported Batch 4 result.
     """
     q2223 = pd.read_parquet(
         REPO / "outputs" / "advanced" / "validation" / "quantiles_2022_2023.parquet"
     )
     qfw = pd.read_parquet(
-        REPO / "outputs" / "advanced" / "test" / "quantiles_FW_raw.parquet"
+        REPO / "outputs" / "v2_cs2_rolling" / "inputs" / "quantiles_FW_raw_mac_2024-2025.parquet"
     )
     raw_q = pd.concat([q2223, qfw]).sort_index()
 
