@@ -9,6 +9,29 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## CS-2a · 24 Nov 2026 · Conditional calibration method code
+
+- **Goal:** Implement all four calibration methods from the CS-2 pre-registration.
+  Code committed before any evaluation is run (CS-2b).
+- **Files added:**
+  - `energy_futures/experiments/conditional_calibration.py`
+  - `tests/test_conditional_calibration.py`
+- **Functions implemented:**
+  - `load_development_data()` — loads both quantile files and builds temp proxy
+    (D-2 observed for 2022-23, archived forecast for 2024-25); hard 2026 guard.
+  - `assign_stratum(day, temp_proxy, max_q50, threshold_95)` — priority: cold → high_demand → normal.
+  - `calibrate_baseline(scores_window)` — finite-sample (1-α)(n+1)/n quantile.
+  - `calibrate_mondrian(scores_window, strata_window, target_stratum, min_days=20)` — stratum-specific
+    correction; falls back to global if fewer than 20 stratum calendar days (approximated as n//48).
+  - `calibrate_width_normalised(norm_scores_window)` — same level formula on normalised scores.
+  - `apply_calibration_daily(raw_quantiles, actuals, temp_series, method, window_days=365)` — daily
+    rolling calibration for all four methods; restores quantile monotonicity.
+  - `select_method(results_dict)` — applies §7 rules in order; returns "baseline" if none qualify.
+- **Tests:** 9 tests in `test_conditional_calibration.py`; `uv run pytest -q` → 91 passed.
+- **No evaluation run.** No 2026 data accessed. No existing files modified.
+- **Remaining uncertainty:** `apply_calibration_daily` has not been run on real data yet.
+  Correctness will be verified in CS-2b.
+
 ## CS-2 pre-registration Amendment 1 · 24 Nov 2026 · Timing correction
 
 - **Goal:** Correct a timing error in the pre-registration before any CS-2 code is written.
