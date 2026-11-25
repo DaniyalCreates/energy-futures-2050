@@ -9,6 +9,24 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 12 · 25 Nov 2026 · cs3_protocol.md: three targeted corrections
+
+- **Goal:** Fix three gaps in `docs/cs3_protocol.md` identified in review of commit e42aae1.
+- **Changes:**
+  - **§4 (Method):** Replaced "or a minimal wrapper" with explicit requirement:
+    `energy_futures/experiments/cs3_confirmation.py` must be written, tested on synthetic
+    data, and committed BEFORE any download. Existing 2026 guard in `load_development_data()`
+    stays; the new wrapper adds an additional runtime date check.
+  - **§8 (Co-primary 2):** Removed "Expected n ≈ 18–22 days (5% of ≈ Jan-Oct ≈ 304
+    days)." Replaced with: threshold (44,411.96 MW) was set by 2023-2025 winter peaks,
+    so actual n is likely smaller and concentrated in Jan–Feb.
+  - **§11 (Prohibitions):** Added explicit carve-out: quarterly GBMQuantile refits
+    ("QS", expanding window from 2009) using 2026 data available up to each refit date
+    are PERMITTED as part of the frozen method. No other use of 2026 data permitted
+    without approval.
+- **Files:** `docs/cs3_protocol.md` (targeted edits only; status remains DRAFT)
+- **No code or test changes.** No 2026 data downloaded.
+
 ## Stage 11 · 25 Nov 2026 · Fix H1–H3 definitions; relabel mean-cost gain as exploratory secondary
 
 - **Goal:** Correct mislabelled H1–H3 definitions throughout docs. The previous

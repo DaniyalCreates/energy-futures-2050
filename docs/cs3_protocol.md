@@ -56,9 +56,18 @@ running CS-3.
 
 **CQR interval:** 90% (α = 0.10), consistent with CS-1 and CS-2b.
 
-**Script:** `energy_futures/experiments/cs2_rolling_eval.py` (or a minimal wrapper
-calling `load_development_data()` with 2026 data appended, then `evaluate()` restricted
-to 2026). No parameters may be changed from the frozen version.
+**Script:** `energy_futures/experiments/cs2_rolling_eval.py` — method functions are
+unchanged. A separate loader/wrapper, `energy_futures/experiments/cs3_confirmation.py`,
+is used to load 2026 data from the protocol paths, enforce the date guard
+(2026-01-01..2026-10-31), and write `cs3_verdict.txt`. This wrapper:
+
+- **Must be written, tested on synthetic data, and committed BEFORE any 2026 data is
+  downloaded.** Dani must approve this document (§2) before the download.
+- Uses only the method code already frozen at commit 304b7d8; no new parameters or
+  model logic.
+- The existing 2026 guard in `load_development_data()` stays in place; `cs3_confirmation.py`
+  adds an additional runtime check that no dates outside 2026-01-01..2026-10-31 are
+  evaluated.
 
 ---
 
@@ -145,7 +154,9 @@ A result above 95% suggests over-width.
 ≥ 80%. Report the 95% bootstrap CI and n (number of high-demand days).**
 
 High-demand day definition: daily-maximum q50 ≥ 44,411.96 MW (threshold frozen in §6).
-Expected n ≈ 18–22 days (5% of ≈ Jan-Oct ≈ 304 days). No lower bound is set for n;
+The 44,411.96 MW threshold was set by 2023-2025 winter peaks, so the actual n of
+high-demand days in 2026 is likely smaller than 5% × 304 days would suggest, and
+concentrated in January-February when demand is highest. No lower bound is set for n;
 if n < 5 the CI is too wide for inference and the result is reported as descriptive only.
 
 ### Secondary — overall Coverage_90, Jan-Oct 2026
@@ -203,8 +214,11 @@ pass criteria are permitted.
 - Do not change the calibration method, window, thresholds, or pass criteria before
   or after seeing 2026 results.
 - Do not modify the pass criteria in §8 after any 2026 data has been accessed.
-- Do not use 2026 data for any other purpose (model retraining, feature selection,
-  additional experiments) without Dani's explicit approval.
+- **Permitted use of 2026 data:** Quarterly GBMQuantile refits ("QS", expanding window
+  from 2009-01-01) using 2026 data available up to each refit date are **part of the
+  frozen method** (§5). This is the only permitted use of 2026 data beyond evaluation.
+- Do not use 2026 data for any other purpose (feature selection, threshold changes,
+  additional experiments, calibration window changes) without Dani's explicit approval.
 - Do not modify `outputs_archive/v1_5db4552/` or any CS-2b outputs.
 - Do not access 2026 data before Dani approves this protocol (§2).
 
