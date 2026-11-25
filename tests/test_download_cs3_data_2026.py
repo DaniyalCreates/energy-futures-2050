@@ -27,6 +27,7 @@ from energy_futures.experiments.download_cs3_data_2026 import (
     _check_schema_match,
     _get_with_retry,
     _neso_list_resources,
+    _reorder_columns_to_reference,
 )
 
 
@@ -344,3 +345,52 @@ class TestSchemaMatchDownload:
         cand = self._make_df(bad_dtype=True)
         with pytest.raises(RuntimeError, match="Dtype mismatch"):
             _check_schema_match(cand, ref, "test")
+
+
+# ---------------------------------------------------------------------------
+# Stage 17 fix: column reordering (processed 2026 frame must match reference
+# columns, order, and dtypes before saving)
+# ---------------------------------------------------------------------------
+
+class TestReorderColumnsToReference:
+    """_reorder_columns_to_reference must enforce exact column set and order."""
+
+    def _make_ref(self) -> pd.DataFrame:
+        idx = pd.date_range("2026-01-01", periods=5, freq="30min", tz="UTC")
+        return pd.DataFrame({
+            "underlying_demand": pd.array([1.0] * 5, dtype="float64"),
+            "nd": pd.array([1.0] * 5, dtype="float64"),
+            "temperature_2m_london": pd.array([10.0] * 5, dtype="float64"),
+            "temperature_2m_gb_mean": pd.array([10.0] * 5, dtype="float64"),
+        }, index=idx)
+
+    def test_reorders_to_match_reference(self):
+        """Columns in wrong order are reordered to match reference exactly."""
+        ref = self._make_ref()
+        # cand has columns in a different order
+        cand = ref[["temperature_2m_gb_mean", "nd", "underlying_demand", "temperature_2m_london"]].copy()
+        result = _reorder_columns_to_reference(cand, ref, "test")
+        assert list(result.columns) == list(ref.columns)
+
+    def test_raises_on_missing_column(self):
+        """Missing column in candidate → RuntimeError mentioning 'missing'."""
+        ref = self._make_ref()
+        cand = ref[["underlying_demand", "nd"]].copy()  # missing 2 weather cols
+        with pytest.raises(RuntimeError, match="missing"):
+            _reorder_columns_to_reference(cand, ref, "test")
+
+    def test_raises_on_extra_column(self):
+        """Extra column in candidate → RuntimeError mentioning 'extra'."""
+        ref = self._make_ref()
+        cand = ref.copy()
+        cand["unexpected_col"] = 0.0
+        with pytest.raises(RuntimeError, match="extra"):
+            _reorder_columns_to_reference(cand, ref, "test")
+
+    def test_reorder_then_schema_check_passes(self):
+        """After reorder, schema check passes when order was wrong but dtypes match."""
+        ref = self._make_ref()
+        cand = ref[["temperature_2m_gb_mean", "nd", "underlying_demand",
+                     "temperature_2m_london"]].copy()
+        reordered = _reorder_columns_to_reference(cand, ref, "test")
+        _check_schema_match(reordered, ref, "test")  # must not raise

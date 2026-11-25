@@ -248,3 +248,20 @@ validated on 2026 data.
 If the baseline FAILS or is MIXED: the write-up will note the failure and its
 implication (the baseline may be over-fitted to 2022-25 patterns; the intervals may
 need refinement).
+
+---
+
+## Deviations from approved protocol
+
+### Deviation 1 — 2026-11-25
+
+Processing bug found by the Stage 17 schema guard after the NESO and ERA5 2026 raw
+files were downloaded, before any 2026 quantile, calibration or coverage was computed.
+
+The bug: `_build_demand_weather_2026` filtered weather columns to `_gb_mean` only,
+producing 22 columns instead of the reference's 46 (per-city + gb_mean). The fix keeps
+all weather columns (`demand.join(wx)`) and reorders them to match the reference column
+order before saving. No method, threshold or criterion changed.
+
+The error message printed the column names of the processed 2026 frame (column headers
+only, no demand values, row counts, or statistics).

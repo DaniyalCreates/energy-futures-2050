@@ -98,6 +98,28 @@ def _check_era5_files_complete(raw_weather_dir: Path | None = None) -> None:
             )
 
 
+def _reorder_columns_to_reference(
+    df: "pd.DataFrame",
+    reference: "pd.DataFrame",
+    context: str,
+) -> "pd.DataFrame":
+    """Reorder df columns to exactly match reference column order.
+
+    Raises RuntimeError if the column SETS differ (missing or extra columns).
+    Returns df with columns in the same order as reference.
+    """
+    df_cols = set(df.columns)
+    ref_cols = set(reference.columns)
+    if df_cols != ref_cols:
+        missing_c = sorted(ref_cols - df_cols)
+        extra_c = sorted(df_cols - ref_cols)
+        raise RuntimeError(
+            f"Column set mismatch in {context}: "
+            f"missing {missing_c}, extra {extra_c}."
+        )
+    return df[list(reference.columns)]
+
+
 def _check_schema_match(
     candidate: "pd.DataFrame",
     reference: "pd.DataFrame",
@@ -275,12 +297,16 @@ def _build_demand_weather_2026(neso_path: Path) -> None:
     _check_era5_files_complete()
     locs = list(LOCATIONS.keys())
     wx, _ = cw.build(RAW_WEATHER_DIR, locs, demand.index)
-    gb_cols = [c for c in wx.columns if c.endswith("_gb_mean")]
-    merged = demand.join(wx[gb_cols])
+    # Keep ALL weather columns (per-city and gb_mean) to match the reference schema
+    merged = demand.join(wx)
 
-    # --- Schema check: merged must match the reference demand_weather.parquet ---
+    # --- Reorder columns to match reference, then verify dtypes ---
     if DEMAND_HIST_PATH.exists():
         ref = pd.read_parquet(DEMAND_HIST_PATH)
+        merged = _reorder_columns_to_reference(
+            merged, ref,
+            "demand_weather_2026 vs demand_weather"
+        )
         _check_schema_match(
             merged, ref,
             "demand_weather_2026.parquet vs demand_weather.parquet"

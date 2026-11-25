@@ -9,6 +9,25 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 17 fix · 25 Nov 2026 · Bug fix: keep all weather columns; reorder before saving (Deviation 1)
+
+- **What happened:** Stage 19's first `download_all()` call failed at the schema guard
+  after NESO CSV (1.6 MB) and all 6 ERA5 city files downloaded successfully.
+  Stage 14's `_build_demand_weather_2026` filtered weather to `_gb_mean` only;
+  reference `demand_weather.parquet` has both per-city and gb_mean columns (46 total vs 22).
+- **Fix (approved by Dani):**
+  - `_build_demand_weather_2026`: removed `gb_cols` filter; changed to `demand.join(wx)`.
+  - New helper `_reorder_columns_to_reference(df, reference, context)`: raises if column
+    sets differ; reorders df columns to match reference order exactly. Called before
+    `_check_schema_match` and before saving.
+  - Deviation 1 note appended to `docs/cs3_protocol.md` (§ Deviations).
+- **New tests in `tests/test_download_cs3_data_2026.py`** (4 new, `TestReorderColumnsToReference`):
+  - wrong-order columns are reordered; missing column raises; extra column raises;
+    reorder then schema-check passes.
+- **No method, threshold or criterion changed.**
+  The error message printed column names only (no demand values, row counts, or statistics).
+- **Test count:** 197 → 201 passed.
+
 ## Stage 17 · 25 Nov 2026 · Two pre-run safety fixes: ERA5 completeness guard; schema check before concatenation
 
 - **Goal:** Harden the data pipeline so a partial or mismatched 2026 build raises an
