@@ -9,6 +9,53 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 20 · 25 Nov 2026 · CS-3 results documentation
+
+- **Goal:** Write the full CS-3 confirmation report; update technical report §7–§8 and
+  PROJECT_STATUS.md; add CS-3 entry to EXPERIMENT_LOG.md; changelog.
+- **Files changed:**
+  - `docs/results/cs3_confirmation.md` — new file: plain-English summary, verbatim verdict,
+    per-criterion table (Coverage_90, n_days, CI, threshold, outcome), four disclosures
+    (Batch 4 2026 rows, Mac-only run, timing, Deviation 1), package versions, refit log,
+    output files.
+  - `docs/technical_report.md` — §7 Limitation 5: added sentence that CS-3 (2026
+    confirmation, verdict PASS) partially addresses the single-test-period concern;
+    §8 Reproducibility: updated test count to 201, added CS-3 paragraph with full numbers.
+  - `PROJECT_STATUS.md` — §5: added CS-3 result line; §6: updated test count to 201;
+    §8: updated "D-001 to D-042"; §9: added CS-3 complete note.
+  - `EXPERIMENT_LOG.md` — added CS-3 entry after AUDIT-001 with verdict, criteria table,
+    environment and runtime.
+- **Results (from cs3_verdict.txt):**
+  - Co-primary 1 (Jan–Feb Coverage_90): **89.8%**, n=59, [85–95%] → PASS
+  - Co-primary 2 (high-demand Coverage_90): **90.9%**, n=17, 95% CI [82.8%, 95.8%], ≥80% → PASS
+  - Secondary (Jan–Oct overall): 89.4%, n=304 (expected [88–92%])
+  - Cold days (descriptive): 84.7%, n=11
+- **No code changes, no new tests.** All 201 existing tests continue to pass.
+
+## Stage 19 · 25 Nov 2026 · CS-3 confirmation run (single execution)
+
+- **Goal:** Execute CS-3 exactly once per approved protocol.
+  Stop rules: failure of any download, guard, schema check, or unexpected package version.
+- **Execution order:**
+  1. `download_all()` — NESO CSV 1.6 MB downloaded; ERA5 all 6 city files downloaded.
+     Failed at schema guard (Deviation 1 — see Stage 17 fix entry). Stopped; fix approved.
+  2. Stage 17 fix applied and committed (see entry below). Re-ran from processing step
+     (raw files already downloaded; not re-downloaded).
+  3. `generate_cs3_quantiles.run()` — 4 QS refits with expanding window from 2009:
+     Q1 train_end 2025-12-31 (4,318 eval rows), Q2 train_end 2026-03-31 (4,368),
+     Q3 train_end 2026-06-30 (4,416), Q4 train_end 2026-09-30 (1,490).
+     Output: `outputs/v3_cs3_confirmation/inputs/quantiles_FW_raw_mac_2026.parquet`
+     (14,592 rows, q05–q95). Runtime: 201 s.
+  4. `cs3_confirmation.run()` — applied calibration, computed criteria. Runtime: 2 s.
+     Output: `outputs/v3_cs3_confirmation/cs3_verdict.txt`,
+     `outputs/v3_cs3_confirmation/metrics_by_period.csv`,
+     `outputs/v3_cs3_confirmation/package_versions.txt`.
+- **Package versions (from outputs/v3_cs3_confirmation/package_versions.txt):**
+  Python 3.12.16 (Clang 23.1.3, arm64), lightgbm 4.7.0, numpy 2.5.5, pandas 3.1.1,
+  macOS-15.7.7-arm64. All versions within those specified in `docs/cs3_protocol.md`.
+- **Verdict: PASS** (see Stage 20 for full numbers).
+- **No re-run after results seen.** Single execution as specified.
+
 ## Stage 17 fix · 25 Nov 2026 · Bug fix: keep all weather columns; reorder before saving (Deviation 1)
 
 - **What happened:** Stage 19's first `download_all()` call failed at the schema guard

@@ -143,14 +143,15 @@ The pre-registered criteria H1 and H3 are met on point estimates but are not sta
 2. The scenario engine uses an idealised EV profile, embedded-wind shapes for offshore wind, and only 2013–2025 weather (no climate change, no 1-in-20 winter).
 3. The decision model is a single aggregated battery with no network, prices or degradation, a stylised cost index, and no state of charge carried between days.
 4. The future decision setting ignores wind and solar forecast error, which flatters every arm.
-5. One test period (22 months); tail statistics have wide confidence intervals.
+5. One test period (22 months); tail statistics have wide confidence intervals. A pre-registered 2026 confirmation run (CS-3) found that the baseline rolling CQR maintained its historical coverage rate on unseen 2026 data (verdict PASS; see §8 and `docs/results/cs3_confirmation.md`).
 
 ## 8. Reproducibility
 
 - Every experiment is defined by `configs/*.yaml` and rerun by one command (README).
-- Environment pinned by `uv.lock`; 69 automated tests; GitHub Actions on Ubuntu and macOS.
+- Environment pinned by `uv.lock`; 201 automated tests; GitHub Actions on Ubuntu and macOS.
 - Raw → processed data rebuild verified identical (298,032 × 46 cells).
 - A fresh-clone rerun of every experiment was compared with the recorded results; see `docs/reproducibility_audit.md`.
+- **CS-3 confirmation run (2026-11-25):** the baseline rolling CQR (frozen at commit 304b7d8) was applied to the genuinely unseen 2026 data under a pre-registered protocol (`docs/cs3_protocol.md`). **Verdict: PASS** — Coverage_90 89.8% on Jan–Feb (n=59 days; target 85–95%) and 90.9% on the 17 highest-demand days Jan–Oct (target ≥ 80%; 95% bootstrap CI 82.8–95.8%). Jan–Oct overall 89.4% (expected 88–92%). This supports the conclusion that the baseline calibration is not over-fitted to 2022–25 patterns. See `docs/results/cs3_confirmation.md` for the full report.
 
 ## 9. Future work
 

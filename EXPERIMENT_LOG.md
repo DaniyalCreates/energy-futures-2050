@@ -69,3 +69,23 @@ Report: `docs/results/optimisation_report.md`. Outputs: `outputs/optimisation/`.
 ## AUDIT-001 · Fresh-clone rerun · 19 Nov 2026
 
 All experiments rerun from a clean clone (36 min). 58/59 compared quantities identical; EXP-001 `linear_weather_PW` 1,088.8 vs 1,089.2 MW on x86 (the Mac reproduces 1,089.21). Data rebuild bit-identical. See `docs/reproducibility_audit.md`.
+
+## CS-3 · 2026 Confirmation Run · 25 Nov 2026 · branch improve/phase-b
+
+**Verdict: PASS**
+
+- Protocol: `docs/cs3_protocol.md` (approved by Dani 2026-11-25)
+- Scripts: `download_cs3_data_2026.py` → `generate_cs3_quantiles.run()` → `cs3_confirmation.run()`
+- Data: 2026-01-01..2026-10-31 (304 days, 14,592 half-hours)
+- Deviation 1: schema bug in Stage 14 processing caught by Stage 17 guard before any demand values seen; fix approved.
+
+| Criterion | Value | n days | 95% CI | Threshold | Outcome |
+|-----------|:-----:|:------:|:------:|-----------|---------|
+| Co-primary 1: Jan–Feb Coverage_90 | **89.8%** | 59 | — | [85%, 95%] | **PASS** |
+| Co-primary 2: high-demand Coverage_90 | **90.9%** | 17 | [82.8%, 95.8%] | ≥ 80% | **PASS** |
+| Secondary: Jan–Oct overall Coverage_90 | 89.4% | 304 | — | [88%, 92%] expected | Within range |
+| Cold days (descriptive) | 84.7% | 11 | — | — | Descriptive |
+
+Environment: Python 3.12.16, lightgbm 4.7.0, numpy 2.5.5, pandas 3.1.1, macOS-15.7.7-arm64.
+Runtime: generate_cs3_quantiles 201 s (4 QS refits); cs3_confirmation 2 s.
+Outputs: `outputs/v3_cs3_confirmation/`. Full report: `docs/results/cs3_confirmation.md`.

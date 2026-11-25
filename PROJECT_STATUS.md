@@ -49,6 +49,7 @@ configs/data.yaml; src/energy_futures/{config.py, pipeline.py, ingest/*, clean/*
 v1: 298,032 half-hours, 2009-01-01 to 2025-12-31 UTC, no gaps. Config hash e0446e27f33da46a, manifest hash 31c6628cede87de2. NESO Open Data Licence; Open-Meteo CC BY 4.0 (non-commercial free tier). Data files are git-ignored; rebuild with `pipeline all`.
 
 ## 5. Experiments and results
+**CS-3 (2026 confirmation, 2026-11-25): PASS.** Baseline rolling CQR on 2026-01-01..2026-10-31. Coverage_90 Jan–Feb 89.8% [85–95%] ✓; high-demand days (n=17) 90.9% ≥ 80%, CI [82.8%, 95.8%] ✓; Jan–Oct overall 89.4% [88–92%] ✓. Cold days (n=11) 84.7% (descriptive). Full report: `docs/results/cs3_confirmation.md`.
 **EXP-006 (decisions):** perfect-foresight value captured on real 2024–25 data: fixed rule 37.7%, point+LP 61.3%, calibrated quantiles+CVaR 63.7%. C − B mean cost significant (−69 [−125, −25]); tail (p95) not significant. Optimising at all and forecast accuracy dominate.
 **EXP-005 (scenarios):** Holistic peak +13.9 GW by 2035 / +57.3 GW by 2050 vs 2024 (FES +16.0 / +61.7). Cold, still week 2050: peak net 81.6 GW, 10.1 TWh in 7 days. 30% unmanaged EV charging: +11 GW on the 2035 peak.
 **EXP-004 (test 8 Mar 2024–Dec 2025, MAE in MW):** LightGBM FW 664 on underlying demand (naive 1281, linear 1089); on ND, ours 995 vs **NESO 653**. CQR coverage 48.8/79.6/90.5 for 50/80/90%.
@@ -57,7 +58,7 @@ Descriptive facts: ND annual mean 35.9 → 26.2 GW and underlying demand 36.6 �
 
 ## 6. Tests
 Audit: fresh-clone rerun 58/59 identical (0.4 MW architecture difference); data rebuild identical; no known dependency vulnerabilities; CI simulation 58 passed / 11 skipped.
-69 passed (Batch 7, incl. 5 dashboard page-render tests). 64 passed (Batch 6). 59 passed (Batch 5). 50 passed (Batch 4). 45 passed natively on macOS (Batch 3 code). Earlier: 26 passed (Claude's sandbox on the Mac, 2026-11-18). Batch 1's 13 tests were verified natively on macOS.
+201 passed (Phase B, 2026-11-25; includes CS-3 confirmation scripts + guards). 69 passed (Batch 7, incl. 5 dashboard page-render tests). 64 passed (Batch 6). 59 passed (Batch 5). 50 passed (Batch 4). 45 passed natively on macOS (Batch 3 code). Earlier: 26 passed (Claude's sandbox on the Mac, 2026-11-18). Batch 1's 13 tests were verified natively on macOS.
 
 ## 7. Problems and open questions
 - Claude's sandboxes can't reach NESO or Open-Meteo, so downloads run on Dani's Mac (D-013).
@@ -68,9 +69,11 @@ Audit: fresh-clone rerun 58/59 identical (0.4 MW architecture difference); data 
 - Population weighting for weather is deferred (D-012).
 
 ## 8. Approved decisions
-DECISIONS.md D-001 to D-041.
+DECISIONS.md D-001 to D-042.
 
 ## 9. Next three tasks
 1. Dani: decide the code licence (MIT recommended), commit email (keep / noreply / rewrite history), repo name and visibility, and dashboard hosting.
 2. On approval: create the private GitHub repo, push, confirm CI is green, then make it public after review.
 3. Optional research follow-ups (technical report §9): multi-site weather + solar forecast; wind/solar forecast uncertainty in decisions; multi-day storage optimisation.
+
+CS-3 confirmation run: **COMPLETE (2026-11-25, PASS)**.
