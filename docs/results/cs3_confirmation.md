@@ -18,8 +18,14 @@ as a pre-registered consistency check. The question was: does the interval calib
 Both pre-registered co-primary criteria are met. The 90% prediction interval covered
 actual demand in 89.8% of Jan–Feb half-hours (pre-registered target 85–95%) and in
 90.9% of half-hours on the 17 highest-demand days Jan–Oct (pre-registered minimum 80%;
-95% bootstrap CI 82.8–95.8%, entirely above the 80% threshold). The Jan–Oct overall
-coverage of 89.4% falls within the expected 88–92% range.
+95% bootstrap CI 82.8–95.8% using 7-day block bootstrap, entirely above the 80%
+threshold). The Jan–Oct overall coverage of 89.4% falls within the expected 88–92% range.
+
+PASS means the calibration holds overall and on the highest-demand days. It does not mean
+all conditions are equally well covered. Cold days (temperature < 3 °C, n=11) show 84.7%
+coverage — below the 85–95% band and consistent with the known weakness identified in
+EXP-004. This is a descriptive observation; cold-day performance was not a pass/fail
+criterion in the protocol.
 
 This supports the conclusion that the baseline calibration is not over-fitted to
 2022–25 patterns.
@@ -52,8 +58,9 @@ of the calibrated interval, expressed as a percentage.
 2023–2025, frozen at CS-2b §6; selection used raw q50 from GBMQuantile, not calibrated
 q50, per protocol §6).
 
-**95% CI for co-primary 2:** block-bootstrap by day, block_size=7, n_boot=1,000,
-seed=42. All 1,000 bootstrap samples yielded coverage ≥ 80%.
+**95% CI for co-primary 2:** moving block bootstrap resampling days (not individual
+half-hours) in contiguous 7-day blocks, n_boot=1,000, seed=42. Each resampled day
+contributes all 48 half-hours. All 1,000 bootstrap samples yielded coverage ≥ 80%.
 
 The high-demand threshold was set by winter peaks, so n=17 is smaller than 5% × 304
 would suggest; days are concentrated in January–February as expected (§8 of protocol).
@@ -68,11 +75,14 @@ would suggest; days are concentrated in January–February as expected (§8 of p
    research changelog ground rules.
 
 2. **Mac-only run.** The GBMQuantile refits and CQR calibration were run on Dani's Mac
-   (arm64, macOS 15.7.7, Apple Silicon). Earlier test results (EXP-004) were computed on
-   x86; a 0.4 MW architecture difference in one linear-model value was noted in
-   AUDIT-001. The 2026 quantile file (`quantiles_FW_raw_mac_2026.parquet`) is therefore
-   arm64-generated; an x86 re-run would likely differ by floating-point rounding, but
-   Coverage_90 is insensitive to rounding-level quantile changes.
+   (arm64, macOS 15.7.7, Apple Silicon). This project's own measurement (CS-2 Amendment
+   2, `docs/cs2_preregistration.md` §12): cloud vs Mac quantile differences — mean
+   absolute diff ≈ 0.0 MW across all quantile levels; maximum isolated difference 113 MW
+   (architecture-dependent LightGBM parallelism, same code, config and seed); raw
+   Coverage_90 over 2024-03-08..2025-12-31 is identical cloud vs Mac (75.15%). The 2026
+   quantile file (`quantiles_FW_raw_mac_2026.parquet`) is therefore arm64-generated; an
+   x86 re-run would likely differ by rounding, but Coverage_90 is insensitive to
+   rounding-level quantile changes.
 
 3. **Timing.** The NESO and ERA5 2026 raw files were downloaded and the confirmation run
    completed on 2026-11-25. No 2026 demand values or statistics were inspected before

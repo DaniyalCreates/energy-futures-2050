@@ -9,6 +9,20 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 21 · 25 Nov 2026 · cs3_confirmation.md wording: Disclosure 2, cold-day caveat, bootstrap detail
+
+- **Goal:** Three wording corrections to `docs/results/cs3_confirmation.md`:
+  (a) Disclosure 2 — replace the 0.4 MW AUDIT-001 OLS reference with this project's own
+      measurement from CS-2 Amendment 2: mean abs diff ≈ 0.0 MW, max 113 MW, raw
+      Coverage_90 identical at 75.15% cloud vs Mac.
+  (b) Summary — add explicit cold-day caveat: 84.7%, n=11 coverage is below the 85–95%
+      band and is a known weakness; PASS means calibration holds overall and on
+      high-demand days, not all conditions equally.
+  (c) CI description — clarify the 7-day block bootstrap resamples days (not half-hours),
+      with each resampled day contributing all 48 half-hours.
+- **File changed:** `docs/results/cs3_confirmation.md` (Disclosures §2, Summary, Criteria §CI).
+- **No code changes. No tests changed.**
+
 ## Stage 20 · 25 Nov 2026 · CS-3 results documentation
 
 - **Goal:** Write the full CS-3 confirmation report; update technical report §7–§8 and
