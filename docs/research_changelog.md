@@ -9,6 +9,47 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 13 · 25 Nov 2026 · cs3_confirmation.py and tests (synthetic data only)
+
+- **Goal:** Write `energy_futures/experiments/cs3_confirmation.py` and
+  `tests/test_cs3_confirmation.py` and commit BEFORE any 2026 data download
+  (required by cs3_protocol.md §4, as corrected in Stage 12).
+- **Script: `energy_futures/experiments/cs3_confirmation.py`** (new)
+  - `_date_guard(raw_q)`: raises ValueError if any 2026 rows fall outside
+    2026-01-01..2026-10-31. Called before any evaluation.
+  - `_load_forecast_temp_2026()`: loads archived forecast temp from
+    `data/raw/weather_forecast/{city}_2026.json`; returns empty Series if files
+    not found (not yet downloaded). 2026 guard applied to dates.
+  - `coverage_90(cal_q, y, mask=None)`: Coverage_90 as a percentage.
+  - `_make_verdict(...)`: applies §8 pass criteria:
+    - Co-primary 1: cov_jan_feb ∈ [85%, 95%]
+    - Co-primary 2: cov_hd ≥ 80% (requires n_hd ≥ 5; else INCONCLUSIVE)
+    - Returns (verdict, reasons): "PASS" / "FAIL" / "MIXED" / "INCONCLUSIVE"
+  - `compute_criteria(cal_q, y, temp_proxy)`: computes all §8 metrics and verdict.
+  - `run(...)`: full pipeline — loads historical calibration data, 2026 quantiles,
+    2026 actuals; calls `apply_calibration_daily(..., method="baseline", ...)`;
+    restricts to 2026-01-01..2026-10-31; writes cs3_verdict.txt,
+    metrics_by_period.csv, package_versions.txt to `outputs/v3_cs3_confirmation/`.
+    **Not to be called until Dani approves the protocol.**
+- **Tests: `tests/test_cs3_confirmation.py`** (new, 28 tests; synthetic data only)
+  - `TestDateGuard` (5): valid range, no-2026 rows, Nov 2026 raises, mixed hist+2026,
+    mixed valid+invalid 2026 raises.
+  - `TestCoverage90` (6): 100%, 0%, 50%, mask restriction, empty mask → NaN,
+    all-NaN actuals → NaN.
+  - `TestMakeVerdict` (8): both pass, jan-feb fail, hd fail → MIXED, both fail,
+    jan-feb over 95% → fail, n_hd<5 → INCONCLUSIVE, NaN jan-feb → INCONCLUSIVE,
+    reasons contain values.
+  - `TestComputeCriteria` (9): 100% coverage (over-width → FAIL), ~90% → PASS,
+    all outside → FAIL, threshold identifies hd days, below threshold no hd days,
+    cold days counted, no cold days when mild, required keys present, verdict from
+    allowed set.
+- **No 2026 data downloaded or opened.** No real data files accessed.
+- **Remaining work before run:** Dani must approve cs3_protocol.md (§2 status change).
+  After approval: download 2026 data, run cs3_confirmation.py.
+- **Files:** `energy_futures/experiments/cs3_confirmation.py` (new),
+  `tests/test_cs3_confirmation.py` (new)
+- **Test count:** 124 → 152 passed.
+
 ## Stage 12 · 25 Nov 2026 · cs3_protocol.md: three targeted corrections
 
 - **Goal:** Fix three gaps in `docs/cs3_protocol.md` identified in review of commit e42aae1.
