@@ -1,6 +1,10 @@
 # Continuous integration: install the exact locked environment and run the test suite on every
 # push and pull request. Data-dependent tests skip automatically (raw data is not in the repo and
 # must be downloaded with `uv run python -m energy_futures.pipeline download`).
+#
+# ubuntu-latest is the required job: a failure there marks the run as failed.
+# macos-latest is best-effort (continue-on-error: true) with a 30-minute timeout so a
+# GitHub macOS runner shortage cannot block the green tick.
 name: tests
 on:
   push:
@@ -8,9 +12,17 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: ${{ matrix.timeout_minutes }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            experimental: false
+            timeout_minutes: 20
+          - os: macos-latest
+            experimental: true
+            timeout_minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Install libomp (LightGBM on macOS)

@@ -9,6 +9,18 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 24 · 25 Nov 2026 · CI: macos-latest continue-on-error + timeout
+
+- **Goal:** Prevent a GitHub macOS runner shortage from blocking the green CI tick.
+- **Change:** `.github/workflows/ci.yml` refactored from a simple `os` matrix to a
+  `matrix.include` list that attaches `experimental` and `timeout_minutes` per OS.
+  - `ubuntu-latest`: `experimental: false`, `timeout_minutes: 20` — required job,
+    unchanged behaviour.
+  - `macos-latest`: `experimental: true`, `timeout_minutes: 30` — `continue-on-error`
+    means the overall run passes as long as ubuntu is green; 30-minute cap cancels a
+    stuck runner cleanly.
+- **No project code or test changes.** No research results affected.
+
 ## Stage 23 · 25 Nov 2026 · README wording fixes before publish
 
 - **Goal:** Three accuracy corrections to README.md requested by Dani before publish.
