@@ -9,6 +9,19 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 23 · 25 Nov 2026 · README wording fixes before publish
+
+- **Goal:** Three accuracy corrections to README.md requested by Dani before publish.
+  (a) Results table: "Yes on average cost (significant)" → "Yes on average cost
+      (exploratory secondary finding)" to match D-042 and technical report §5.3.
+  (b) Intro: "All experiments are pre-registered" → "The key experiments (forecast test,
+      battery study, CS-2, CS-3) were pre-registered" — the baselines and scenario
+      experiments were not formally pre-registered.
+  (c) New section "How this was built": states AI coding assistance (Claude Code) under
+      Dani's direction and that all changes are recorded in the changelog.
+- **Tests:** 201 passed.
+- **File changed:** `README.md` only.
+
 ## Stage 22 · 25 Nov 2026 · Launch preparation: README rewrite, .gitignore, LICENSE, safety scan
 
 - **Goal:** Prepare the repository for publication (not yet pushed).

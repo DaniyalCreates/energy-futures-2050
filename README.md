@@ -6,8 +6,8 @@ and deterministic decisions?** Built in Python using real GB half-hourly demand 
 (2009–2025) and a pre-registered 2026 confirmation run on genuinely unseen data. The
 pipeline covers data acquisition, cleaning, day-ahead demand forecasting, scenario
 simulation against NESO Future Energy Scenarios 2025, and constrained battery scheduling.
-All experiments are pre-registered and reproducible from one command each; raw data is
-not redistributed.
+The key experiments (forecast test, battery study, CS-2, CS-3) were pre-registered;
+all are reproducible from one command each. Raw data is not redistributed.
 
 ## Results at a glance
 
@@ -19,7 +19,7 @@ not redistributed.
 | 2026 confirmation run (CS-3, pre-registered) | **PASS** — Jan–Feb 89.8%, high-demand days 90.9% (n=17, 95% CI 82.8–95.8%) |
 | Cold-day coverage (temp < 3 °C, n=11, descriptive) | **84.7%** — a known weakness; not a pass/fail criterion |
 | Battery value captured vs perfect foresight | fixed rule **38%** · point LP **61%** · calibrated CVaR **64%** |
-| Is risk-awareness better? | Yes on average cost (significant); **not for tail risk** (CI includes 0) |
+| Is risk-awareness better? | Yes on average cost (exploratory secondary finding); **not for tail risk** (CI includes 0) |
 
 **Short answer:** optimising at all and forecast accuracy matter most. Uncertainty-awareness
 adds a small, consistent average-cost gain that grows when storage is scarce. The headline
@@ -92,6 +92,11 @@ are not statistically significant at this sample size. See
   archived forecasts), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
   The free API tier is non-commercial.
 - Raw data is not redistributed; the pipeline downloads it on first run.
+
+## How this was built
+
+Built with AI coding assistance (Claude Code) under my direction; every change was
+independently reviewed and recorded in `docs/research_changelog.md`.
 
 ## Licence
 
