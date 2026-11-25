@@ -9,11 +9,14 @@ _Pre-registration: docs/cs2_preregistration.md (Amendments 1 and 2 included)_
 
 The rolling evaluation tested four prediction-interval calibration methods
 across 11 evaluation quarters (2022-25 development data). **No candidate method
-met all four pre-registered selection rules; the baseline is retained.** The key
-barrier was cold-day improvement: none of the three candidates achieved the required
-≥ 3.0 percentage-point increase in cold-day Coverage_90 over the baseline, primarily
-because the cold stratum falls back to the global correction in most quarters (too few
-cold days in the 365-day rolling window).
+met all four pre-registered selection rules; the baseline is retained.** No candidate
+achieved the required ≥ 3.0 percentage-point increase in cold-day Coverage_90 over
+the baseline. Observed facts: Mondrian fell back to global correction on 26 of 47
+cold evaluation days (55%); Mondrian extended used 0% cold fallback yet achieved
+lower cold coverage than baseline (85.5% vs 86.3%). All candidate-vs-baseline
+differences in cold and high-demand coverage fall within overlapping 95% bootstrap
+CIs (n = 47 cold days, n = 42 high-demand days); no difference is distinguishable
+from noise. Causes are not established from these data.
 
 Sanity check: baseline Coverage_90 on 2024-03-08..2025-12-31 = 90.51% vs CS-1
 reference 90.5% (diff = +0.01 pp; within ±1.0 pp tolerance — PASS).
@@ -70,6 +73,11 @@ _95% block-bootstrap CIs by calendar day, 1 000 resamples, seed 42._
 _cold = temp_proxy < 3 °C; high_demand = daily max q50 ≥ 95th percentile over full eval window._
 
 No NaN actual-demand rows dropped; no NaN-proxy days.
+
+**Inference note:** All candidate-vs-baseline differences in cold-proxy Coverage_90
+(n = 47 cold days) and high-demand Coverage_90 (n = 42 high-demand days) fall within
+overlapping 95% bootstrap CIs. No difference is statistically distinguishable from
+noise given these sample sizes.
 
 ### 4.2 All conditions (baseline)
 
@@ -156,10 +164,10 @@ Key observations:
   2–12 high-demand days per quarter, the 365-day window rarely accumulates ≥ 20 such days.
   Mondrian therefore applies the global (baseline) correction for high demand in all but
   the most demand-heavy quarters.
-- **Cold stratum falls back 50–100%** of the time in Mondrian. Mondrian extended eliminates
-  cold fallbacks (uses all history), but its cold coverage (85.5%) is actually worse than
-  baseline (86.3%), suggesting that mixing 2022-23 and 2024-25 cold observations (which use
-  different temperature proxies) degrades rather than improves calibration for cold days.
+- **Cold stratum: Mondrian falls back on 26/47 cold days (55%).** Mondrian extended
+  eliminates cold fallbacks (0% fallback, using all history), yet its pooled cold
+  coverage (85.5%) is lower than baseline (86.3%). Both differences fall within
+  overlapping 95% bootstrap CIs (see §4.1); the cause is not established.
 
 ---
 
@@ -201,3 +209,13 @@ the sanity check confirms calibrated coverage matches CS-1 to within 0.01 pp.
 5. **Mac/cloud architecture difference:** noted in §8; baseline coverage matches CS-1 to
    within 0.01 pp, so this does not affect the conclusions.
 6. **Pre-registration seal: laptop only** — timing cannot be independently verified.
+7. **Pre-registration design flaw (high-demand stratum):** The high-demand stratum is
+   defined as the top 5% of daily-max q50 within the current 365-day calibration window.
+   This yields at most ⌊0.05 × 365⌋ = 18 high-demand days per window — strictly fewer
+   than the MIN_DAYS_STRATUM = 20 fallback threshold. Consequently Candidates A and C
+   structurally could never accumulate enough high-demand calibration days; they fell back
+   to the global correction for 100% of high-demand evaluation days (confirmed by the
+   fallback report in §7). This incompatibility between the high-demand definition and
+   the fallback threshold was not identified before the pre-registration was sealed.
+   It cannot be corrected within this pre-registration; the high-demand comparison
+   between Mondrian and baseline is therefore void.

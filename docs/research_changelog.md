@@ -9,6 +9,27 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 8 · 24 Nov 2026 · Corrections to conditional calibration report
+
+- **Goal:** Fix three accuracy issues in `docs/results/conditional_calibration.md`
+  identified in review of commit be16f54.
+- **(a) §1 and §7:** Removed causal claim "primarily because the cold stratum falls back".
+  Replaced with factual observations: Mondrian fell back on 26/47 cold days (55%);
+  Mondrian extended had 0% cold fallback yet lower cold coverage (85.5% vs 86.3%).
+  Causes not established from these data.
+- **(b) §9 Limitation #7 added:** Pre-registration design flaw — the high-demand
+  stratum is defined as the top 5% of daily-max q50 within the 365-day window, yielding
+  at most 18 high-demand days per window (5% × 365 = 18.25), which is below the
+  MIN_DAYS_STRATUM = 20 fallback threshold. Candidates A and C structurally could never
+  accumulate enough high-demand calibration days; they fell back to global for 100% of
+  high-demand evaluation days. Identified post-results; cannot be corrected within this
+  pre-registration.
+- **(c) §4.1 and §1:** Added explicit statement that all candidate-vs-baseline differences
+  in cold and high-demand Coverage_90 fall within overlapping 95% bootstrap CIs
+  (n = 47 cold days, n = 42 high-demand days); no difference is distinguishable from noise.
+- **Files changed:** `docs/results/conditional_calibration.md` (§1, §4.1, §7, §9)
+- **No code, data or results changed.**
+
 ## CS-4 Stage 7 · 24 Nov 2026 · Statistical significance tests on frozen results
 
 - **Goal:** Apply DM tests and Holm correction to EXP-004 and EXP-006 frozen results;
