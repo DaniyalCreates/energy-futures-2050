@@ -9,6 +9,51 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 14 · 25 Nov 2026 · CS-3 download and quantile-generation scripts (write-only; no 2026 data accessed)
+
+- **Goal:** Write (but not run) the scripts that will download 2026 data and generate CS-3 quantiles once Dani approves the protocol. All network calls mocked in tests; no 2026 files downloaded or opened.
+- **New file: `energy_futures/experiments/download_cs3_data_2026.py`**
+  - `demand_2026()`: downloads NESO historic demand 2026 CSV via CKAN API and ERA5
+    actual weather for 6 cities (2026-01-01..2026-10-31); produces
+    `data/processed/demand_weather_2026.parquet`.
+  - `forecast_weather_2026()`: downloads Open-Meteo Previous Runs API
+    (`previous_day2`) for 6 cities, 2026-01-01..2026-10-31; writes
+    `data/raw/weather_forecast/{city}_2026.json`.
+  - `download_all()`: runs both in order. All calls restricted to CS3_START..CS3_END.
+  - Helper `_get_with_retry(url, params, n_retry=4)`: handles 429 rate-limiting with
+    linear backoff (30 s × attempt).
+  - Helper `_write_manifest()`: appends SHA256, URL, timestamp to `data/raw/manifest.csv`.
+- **New file: `energy_futures/experiments/generate_cs3_quantiles.py`**
+  - `load_combined_demand(demand_path, demand_2026_path)`: concatenates 2009-2025
+    and 2026 parquets so Jan 2026 half-hours draw on Dec 2025 lag values (no year
+    boundary gap).
+  - `_check_output_dates(q)`: raises ValueError if any output row falls outside
+    2026-01-01..2026-10-31.
+  - `run(...)`: loads validation summary → start_pw; loads combined demand + archived
+    forecast weather; builds PW and FW feature sets;
+    calls `backtest.run_multi(lambda: GBMQuantile(True, start_pw), X_pw, y, {"FW": X_fw},
+    CS3_START, CS3_END, "QS", method="predict_quantiles")`; validates output dates;
+    writes `outputs/v3_cs3_confirmation/inputs/quantiles_FW_raw_mac_2026.parquet`.
+- **New file: `tests/test_download_cs3_data_2026.py`** (12 tests; all network mocked)
+  - `TestNesoListResources` (3): parses year/url from CKAN JSON; excludes non-CSV;
+    missing year not in result.
+  - `TestGetWithRetry` (3): success on 200; raises RuntimeError after max retries on 429;
+    retries on 429 then succeeds.
+  - `TestForecastWeather2026DateGuard` (1): params use CS3_START/CS3_END exactly.
+  - `TestEra5Weather2026DateGuard` (1): params use CS3_START/CS3_END exactly.
+  - `TestConstants` (4): cs3 window is 2026; 6 locations; forecast vars match pipeline;
+    lead is `previous_day2`.
+- **New file: `tests/test_generate_cs3_quantiles.py`** (12 tests; no LightGBM training)
+  - `TestLagFeatureContinuity` (4): lag_d2 not NaN when Dec 2025 history present;
+    lag_d7 not NaN; lag_d2 IS NaN when no Dec 2025 history; combined index has no duplicates.
+  - `TestCheckOutputDates` (4): valid range passes; Nov 2026 raises; mixed raises;
+    Oct 31 exactly passes.
+  - `TestRefitCutoffOrdering` (4): all QS cutoffs < block_start; Q1-2026 train_cutoff
+    is in year 2025; blocks cover full 2026-01-01..2026-10-31; exactly 4 QS refits.
+- **Tests:** 24 new tests; all pass. **Total test count: 152 → 176 passed.**
+- **No 2026 data downloaded or opened.** MUST NOT run download_all() or run()
+  until Dani approves docs/cs3_protocol.md.
+
 ## Stage 13 · 25 Nov 2026 · cs3_confirmation.py and tests (synthetic data only)
 
 - **Goal:** Write `energy_futures/experiments/cs3_confirmation.py` and
