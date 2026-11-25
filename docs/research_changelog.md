@@ -9,6 +9,39 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 9 · 25 Nov 2026 · CS-4 stats script + regenerated statistical tests report
+
+- **Goal:** Make DM tests and Holm correction reproducible from a committed script;
+  fix inaccuracies in statistical_tests.md identified in review of commit be16f54.
+- **Script:** `energy_futures/experiments/cs4_stats.py` (new). Reads frozen
+  `outputs/advanced/test/point_underlying_demand.parquet`,
+  `outputs/advanced/test/point_nd.parquet`, and
+  `outputs/optimisation/c_vs_b_bootstrap.csv` (read-only). Writes summary to
+  `outputs/v2_cs4_stats/` (dm_tests.csv, holm_cvb.csv, summary.json).
+- **Tests:** `tests/test_cs4_stats.py` (new, 14 tests):
+  - Newey-West variance: lag=0 vs sample variance; iid convergence.
+  - DM: identical forecasts → stat ≈ 0 or NaN; clearly better model → significant;
+    clearly worse → positive and significant; MAE values correct.
+  - Holm: hand-worked 3-test example; all-significant; none-significant; single test;
+    order independence.
+  - approx_pvalue_from_ci: CI excluding zero; CI including zero; known case.
+- **Numbers that changed from previous doc** (script values used):
+  - DM(FW vs naive, lag=1): −11.67 → −11.68 (−11.6788 rounded to 2dp)
+  - DM(FW vs NESO, lag=1): +17.13 → +17.15 (+17.1536 rounded to 2dp)
+  - Electric 2050 mean p-value: 0.032 → 0.033 (0.0325 rounded to 3dp)
+  - Cost unit label: "£/MWh/day" → "MW (cost index)" (stylised index, not £)
+  - Added lag=7 DM results: DM(FW vs naive) = −7.53; DM(FW vs NESO) = +15.15; both p < 0.001.
+  - Pre-specified family corrected to H1-H3 (m=3); H3 not testable from saved outputs.
+  - H1 Holm threshold corrected: 0.025 (m=2) → 0.0167 (m=3); H1 still survives (p=0.0072).
+- **Removed:** "dissertation" references; speculation about why NESO is better; "£/MWh/day".
+- **Added:** "approximate (normal approximation)" label on CI-derived p-values; §5 change log.
+- **Test count:** 124 passed (14 new).
+- **Files:**
+  - `energy_futures/experiments/cs4_stats.py` (new)
+  - `tests/test_cs4_stats.py` (new)
+  - `docs/results/statistical_tests.md` (fully regenerated)
+  - `outputs/v2_cs4_stats/` (new, gitignored)
+
 ## Stage 8 · 24 Nov 2026 · Corrections to conditional calibration report
 
 - **Goal:** Fix three accuracy issues in `docs/results/conditional_calibration.md`
