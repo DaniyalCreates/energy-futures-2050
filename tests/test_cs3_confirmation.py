@@ -16,7 +16,9 @@ import pytest
 
 from energy_futures.experiments.cs3_confirmation import (
     HIGH_DEMAND_THRESHOLD_MW,
+    _block_bootstrap_ci_coverage,
     _date_guard,
+    _load_forecast_temp_2026,
     _make_verdict,
     compute_criteria,
     coverage_90,
@@ -331,13 +333,16 @@ class TestComputeCriteria:
         assert result["n_cold_days"] == 0
 
     def test_result_contains_required_keys(self):
-        """Result dict must contain all required keys."""
+        """Result dict must contain all required keys (including Stage-15 additions)."""
         cal_q, y, temp_proxy = self._make_scenario()
         result = compute_criteria(cal_q, y, temp_proxy)
         required = {
-            "coverage_90_jan_feb", "coverage_90_jan_oct",
-            "coverage_90_high_demand", "coverage_90_cold",
-            "n_high_demand_days", "n_cold_days", "verdict", "reasons",
+            "coverage_90_jan_feb", "n_days_jan_feb",
+            "coverage_90_jan_oct", "n_days_jan_oct",
+            "coverage_90_high_demand", "n_high_demand_days",
+            "ci_high_demand_lo", "ci_high_demand_hi",
+            "coverage_90_cold", "n_cold_days",
+            "verdict", "reasons",
         }
         assert required.issubset(result.keys())
 
@@ -347,3 +352,180 @@ class TestComputeCriteria:
         # Verdict starts with one of the allowed labels
         allowed = {"PASS", "FAIL", "MIXED", "INCONCLUSIVE"}
         assert any(result["verdict"].startswith(a) for a in allowed)
+
+
+# ---------------------------------------------------------------------------
+# Stage 15: high-demand selection uses RAW q50 (protocol §6)
+# ---------------------------------------------------------------------------
+
+class TestHighDemandUsesRawQ50:
+    """High-demand day selection must use RAW q50 when raw_q is provided."""
+
+    def _make_idx(self, n_days: int = 10) -> pd.DatetimeIndex:
+        return pd.date_range("2026-01-01", periods=n_days * 48, freq="30min", tz="UTC")
+
+    def _make_q(self, idx: pd.DatetimeIndex, q50: float) -> pd.DataFrame:
+        return pd.DataFrame(
+            {"q05": 100.0, "q10": 110.0, "q25": 120.0, "q50": q50,
+             "q75": 160.0, "q90": 170.0, "q95": 180.0},
+            index=idx,
+        )
+
+    def test_raw_q50_above_threshold_selects_hd_days(self):
+        """When raw_q has high q50 but cal_q has low q50, raw_q determines hd days."""
+        idx = self._make_idx()
+        # cal_q: q50 BELOW threshold → 0 hd days if cal_q were used
+        cal_q = self._make_q(idx, HIGH_DEMAND_THRESHOLD_MW - 1_000)
+        # raw_q: q50 ABOVE threshold → all days are hd
+        raw_q = self._make_q(idx, HIGH_DEMAND_THRESHOLD_MW + 1_000)
+
+        y = pd.Series(140.0, index=idx)
+        all_dates = sorted({t.date() for t in idx.tz_convert("Europe/London")})
+        temp = pd.Series({d: 15.0 for d in all_dates}, dtype=float)
+
+        result_raw = compute_criteria(cal_q, y, temp, raw_q=raw_q)
+        result_no_raw = compute_criteria(cal_q, y, temp)  # falls back to cal_q
+
+        assert result_raw["n_high_demand_days"] > 0, \
+            "raw_q with high q50 should produce hd days"
+        assert result_no_raw["n_high_demand_days"] == 0, \
+            "without raw_q, low cal_q q50 should give 0 hd days"
+
+    def test_raw_q50_below_threshold_gives_zero_hd_days(self):
+        """When raw_q has low q50, no hd days even if cal_q would give some."""
+        idx = self._make_idx(n_days=5)
+        cal_q = self._make_q(idx, HIGH_DEMAND_THRESHOLD_MW + 1_000)  # would give hd days
+        raw_q = self._make_q(idx, HIGH_DEMAND_THRESHOLD_MW - 1_000)  # low → no hd days
+
+        y = pd.Series(140.0, index=idx)
+        all_dates = sorted({t.date() for t in idx.tz_convert("Europe/London")})
+        temp = pd.Series({d: 15.0 for d in all_dates}, dtype=float)
+
+        result = compute_criteria(cal_q, y, temp, raw_q=raw_q)
+        assert result["n_high_demand_days"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Stage 15: block-bootstrap CI for co-primary 2
+# ---------------------------------------------------------------------------
+
+class TestBlockBootstrapCI:
+    """_block_bootstrap_ci_coverage must return valid intervals."""
+
+    def _make_scenario(self, n_days: int = 15, frac_inside: float = 1.0) -> tuple:
+        idx = pd.date_range("2026-01-15", periods=n_days * 48, freq="30min", tz="UTC")
+        cal_q = pd.DataFrame({"q05": 100.0, "q50": 150.0, "q95": 200.0}, index=idx)
+        if frac_inside == 1.0:
+            y = pd.Series(150.0, index=idx)
+        else:
+            # Every 1/frac_inside-th row is outside
+            period = max(1, int(1.0 / (1.0 - frac_inside)))
+            vals = np.where(np.arange(len(idx)) % period == 0, 250.0, 150.0).astype(float)
+            y = pd.Series(vals, index=idx)
+        hd_dates = {d.date() for d in idx.tz_convert("Europe/London")}
+        return cal_q, y, hd_dates
+
+    def test_perfect_coverage_ci_near_100(self):
+        """All actuals inside → all bootstrap samples give 100% → CI ≈ [100, 100]."""
+        cal_q, y, hd_dates = self._make_scenario(n_days=10, frac_inside=1.0)
+        lo, hi = _block_bootstrap_ci_coverage(cal_q, y, hd_dates, n_boot=100, seed=42)
+        assert lo >= 99.9 and hi >= 99.9
+
+    def test_empty_hd_dates_gives_nan(self):
+        """Empty hd_dates should return (nan, nan)."""
+        idx = pd.date_range("2026-01-01", periods=5 * 48, freq="30min", tz="UTC")
+        cal_q = pd.DataFrame({"q05": 100.0, "q50": 150.0, "q95": 200.0}, index=idx)
+        y = pd.Series(150.0, index=idx)
+        lo, hi = _block_bootstrap_ci_coverage(cal_q, y, set(), n_boot=50, seed=42)
+        assert np.isnan(lo) and np.isnan(hi)
+
+    def test_ci_lo_le_hi(self):
+        """lo must be ≤ hi for a valid input with partial coverage."""
+        cal_q, y, hd_dates = self._make_scenario(n_days=20, frac_inside=0.8)
+        lo, hi = _block_bootstrap_ci_coverage(cal_q, y, hd_dates, n_boot=200, seed=42)
+        assert np.isfinite(lo) and np.isfinite(hi)
+        assert lo <= hi
+
+    def test_compute_criteria_includes_ci_keys(self):
+        """compute_criteria must include ci_high_demand_lo and ci_high_demand_hi."""
+        idx = pd.date_range("2026-01-01", periods=10 * 48, freq="30min", tz="UTC")
+        cal_q = pd.DataFrame(
+            {"q05": 100.0, "q10": 110.0, "q25": 120.0, "q50": 150.0,
+             "q75": 160.0, "q90": 170.0, "q95": 200.0},
+            index=idx,
+        )
+        y = pd.Series(150.0, index=idx)
+        all_dates = sorted({t.date() for t in idx.tz_convert("Europe/London")})
+        temp = pd.Series({d: 15.0 for d in all_dates}, dtype=float)
+        result = compute_criteria(cal_q, y, temp)
+        assert "ci_high_demand_lo" in result
+        assert "ci_high_demand_hi" in result
+
+
+# ---------------------------------------------------------------------------
+# Stage 15: n_days reported for every period
+# ---------------------------------------------------------------------------
+
+class TestNDaysReporting:
+    """n_days must appear in result dict for all periods."""
+
+    def test_n_days_jan_feb_matches_jan_feb_window(self):
+        """n_days_jan_feb should equal the number of unique days in Jan-Feb."""
+        q_jf = _make_quantiles("2026-01-01", n_days=59, q50=100.0)
+        q_mo = _make_quantiles("2026-03-01", n_days=245, q50=100.0)
+        cal_q = pd.concat([q_jf, q_mo]).sort_index()
+        y = _make_actuals(cal_q.index, value=150.0)
+        all_dates = sorted({t.date() for t in cal_q.index.tz_convert("Europe/London")})
+        temp = pd.Series({d: 15.0 for d in all_dates}, dtype=float)
+        result = compute_criteria(cal_q, y, temp)
+        assert "n_days_jan_feb" in result
+        assert result["n_days_jan_feb"] == 59
+
+    def test_n_days_jan_oct_matches_total_window(self):
+        """n_days_jan_oct should equal total unique days in the window (59 + 245 = 304)."""
+        q_jf = _make_quantiles("2026-01-01", n_days=59, q50=100.0)
+        q_mo = _make_quantiles("2026-03-01", n_days=245, q50=100.0)
+        cal_q = pd.concat([q_jf, q_mo]).sort_index()
+        y = _make_actuals(cal_q.index, value=150.0)
+        all_dates = sorted({t.date() for t in cal_q.index.tz_convert("Europe/London")})
+        temp = pd.Series({d: 15.0 for d in all_dates}, dtype=float)
+        result = compute_criteria(cal_q, y, temp)
+        assert "n_days_jan_oct" in result
+        assert result["n_days_jan_oct"] == 304
+
+
+# ---------------------------------------------------------------------------
+# Stage 15: date guard applied to demand DataFrame
+# ---------------------------------------------------------------------------
+
+class TestDateGuardOnDemandDataFrame:
+    """_date_guard must work on demand DataFrames (not just quantile DataFrames)."""
+
+    def test_demand_df_with_nov_2026_raises(self):
+        """A demand DataFrame with November 2026 data should raise ValueError."""
+        idx = pd.date_range("2026-11-01", periods=5 * 48, freq="30min", tz="UTC")
+        demand_df = pd.DataFrame({"underlying_demand": 30_000.0}, index=idx)
+        with pytest.raises(ValueError, match="date guard"):
+            _date_guard(demand_df)
+
+    def test_demand_df_valid_range_does_not_raise(self):
+        """A demand DataFrame with valid 2026-01-01..2026-10-31 data should pass."""
+        idx = pd.date_range("2026-01-01", periods=10 * 48, freq="30min", tz="UTC")
+        demand_df = pd.DataFrame({"underlying_demand": 30_000.0}, index=idx)
+        _date_guard(demand_df)  # should not raise
+
+
+# ---------------------------------------------------------------------------
+# Stage 15: raise FileNotFoundError when weather file is missing
+# ---------------------------------------------------------------------------
+
+class TestMissingWeatherFileRaises:
+    """_load_forecast_temp_2026 must raise FileNotFoundError if any city file is missing."""
+
+    def test_raises_when_weather_file_missing(self):
+        """If any city's 2026 weather file is absent, raise FileNotFoundError."""
+        from unittest.mock import patch
+
+        with patch("pathlib.Path.exists", return_value=False):
+            with pytest.raises(FileNotFoundError, match="weather file missing"):
+                _load_forecast_temp_2026()

@@ -9,6 +9,41 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 15 · 25 Nov 2026 · Fix cs3_confirmation.py: raw q50 for hd selection, bootstrap CI, n_days, demand guard, weather error
+
+- **Goal:** Five targeted corrections to `cs3_confirmation.py` identified in review; tests for each.
+- **Change 1 — high-demand day selection uses RAW q50 (protocol §6):**
+  `compute_criteria` now accepts `raw_q: pd.DataFrame | None = None`. When provided,
+  `_q_for_hd["q50"].groupby(local_dates).max()` uses `raw_q` instead of `cal_q` for the
+  high-demand day threshold comparison. `run()` extracts `raw_q_eval` from the loaded
+  `q2026` (pre-calibration quantiles) and passes it.
+- **Change 2 — 95% block-bootstrap CI for co-primary 2:**
+  New function `_block_bootstrap_ci_coverage(cal_q, y, hd_dates, block_size=7, n_boot=1000,
+  seed=42)` resamples by day (moving block bootstrap on sorted high-demand dates). Called
+  inside `compute_criteria`; result keys `ci_high_demand_lo` and `ci_high_demand_hi`
+  added to the result dict.
+- **Change 3 — n_days reported for all periods:**
+  `compute_criteria` now returns `n_days_jan_feb` (unique local days in Jan-Feb window)
+  and `n_days_jan_oct` (unique local days in full window). `_write_outputs` uses them
+  in `metrics_by_period.csv` and `cs3_verdict.txt`.
+- **Change 4 — date guard applied to 2026 demand file:**
+  `run()` now calls `_date_guard(demand_2026)` immediately after loading the demand
+  parquet (before extracting `y_2026`).
+- **Change 5 — raise FileNotFoundError on missing weather file:**
+  `_load_forecast_temp_2026()` now raises `FileNotFoundError` if any city JSON is absent,
+  instead of silently returning an empty Series.
+- **New tests in `tests/test_cs3_confirmation.py`** (22 new, 35 total new):
+  - `TestHighDemandUsesRawQ50` (2): raw q50 above threshold → hd days selected;
+    raw q50 below threshold → 0 hd days even when cal_q is high.
+  - `TestBlockBootstrapCI` (4): perfect coverage → CI ≈ [100,100]; empty hd_dates → (nan,nan);
+    partial coverage → lo ≤ hi; compute_criteria includes ci keys.
+  - `TestNDaysReporting` (2): n_days_jan_feb = 59; n_days_jan_oct = 304.
+  - `TestDateGuardOnDemandDataFrame` (2): demand df with Nov 2026 raises; valid range passes.
+  - `TestMissingWeatherFileRaises` (1): raises FileNotFoundError when file absent.
+  - Updated `test_result_contains_required_keys` to check all new keys.
+- **Test count:** 176 → 187 passed.
+- **No 2026 data downloaded or opened.**
+
 ## Stage 14 · 25 Nov 2026 · CS-3 download and quantile-generation scripts (write-only; no 2026 data accessed)
 
 - **Goal:** Write (but not run) the scripts that will download 2026 data and generate CS-3 quantiles once Dani approves the protocol. All network calls mocked in tests; no 2026 files downloaded or opened.

@@ -97,7 +97,11 @@ def _load_forecast_temp_2026() -> pd.Series:
     for city in CITIES:
         path = fcast_dir / f"{city}_2026.json"
         if not path.exists():
-            return pd.Series(dtype=float)
+            raise FileNotFoundError(
+                f"CS-3 weather file missing: {path}. "
+                "Run download_cs3_data_2026.forecast_weather_2026() first "
+                "(requires Dani's protocol approval)."
+            )
         with open(path) as fh:
             raw = json.load(fh)
         ts = pd.to_datetime(raw["hourly"]["time"]).tz_localize("UTC")
@@ -149,6 +153,69 @@ def coverage_90(
         return float("nan")
     inside = (y_a[valid] >= cal_q.loc[valid, "q05"]) & (y_a[valid] <= cal_q.loc[valid, "q95"])
     return float(inside.mean() * 100.0)
+
+
+# ---------------------------------------------------------------------------
+# Block-bootstrap CI for Coverage_90 (co-primary 2)
+# ---------------------------------------------------------------------------
+
+def _block_bootstrap_ci_coverage(
+    cal_q: pd.DataFrame,
+    y: pd.Series,
+    hd_dates: set,
+    block_size: int = 7,
+    n_boot: int = 1_000,
+    seed: int = 42,
+) -> tuple[float, float]:
+    """95% block-bootstrap CI for Coverage_90 on high-demand days (§8 co-primary 2).
+
+    Resamples by day (each block is block_size consecutive high-demand days from the
+    sorted list). Returns (lo_pct, hi_pct) = 2.5th and 97.5th percentiles.
+    Returns (nan, nan) if hd_dates is empty or no coverage can be computed.
+    """
+    dates_sorted = sorted(hd_dates)
+    n = len(dates_sorted)
+    if n == 0:
+        return float("nan"), float("nan")
+
+    local_arr = cal_q.index.tz_convert(TZ).normalize().tz_localize(None)
+    date_to_iloc: dict[datetime.date, list[int]] = {}
+    for i, ts in enumerate(local_arr):
+        d = ts.date()
+        date_to_iloc.setdefault(d, []).append(i)
+
+    y_arr = y.reindex(cal_q.index).to_numpy()
+    q05_arr = cal_q["q05"].to_numpy()
+    q95_arr = cal_q["q95"].to_numpy()
+
+    rng = np.random.default_rng(seed)
+    n_blocks_avail = max(1, n - block_size + 1)
+    boot_coverages: list[float] = []
+
+    for _ in range(n_boot):
+        starts = rng.integers(0, n_blocks_avail, size=(n // block_size) + 2)
+        idx_flat = np.concatenate(
+            [np.arange(s, min(s + block_size, n)) for s in starts]
+        )[:n]
+        iloc_all: list[int] = []
+        for di in idx_flat:
+            d = dates_sorted[int(di)]
+            if d in date_to_iloc:
+                iloc_all.extend(date_to_iloc[d])
+        if not iloc_all:
+            continue
+        ia = np.array(iloc_all)
+        valid = ~np.isnan(y_arr[ia]) & ~np.isnan(q05_arr[ia]) & ~np.isnan(q95_arr[ia])
+        if valid.sum() == 0:
+            continue
+        inside = (y_arr[ia][valid] >= q05_arr[ia][valid]) & (
+            y_arr[ia][valid] <= q95_arr[ia][valid]
+        )
+        boot_coverages.append(float(inside.mean() * 100.0))
+
+    if len(boot_coverages) < 2:
+        return float("nan"), float("nan")
+    return float(np.percentile(boot_coverages, 2.5)), float(np.percentile(boot_coverages, 97.5))
 
 
 # ---------------------------------------------------------------------------
@@ -222,19 +289,23 @@ def compute_criteria(
     cal_q: pd.DataFrame,
     y: pd.Series,
     temp_proxy: pd.Series,
+    raw_q: pd.DataFrame | None = None,
 ) -> dict:
     """Compute §8 coverage criteria from calibrated quantiles and actuals.
 
     Parameters
     ----------
-    cal_q       : calibrated baseline quantiles (UTC indexed, q05..q95)
-                  Caller must restrict to 2026-01-01..2026-10-31 before calling.
-    y           : actual underlying demand (UTC indexed)
-    temp_proxy  : local date-indexed temp proxy (datetime.date keys; NaN if unavailable)
+    cal_q   : calibrated baseline quantiles (UTC indexed, q05..q95).
+              Caller must restrict to 2026-01-01..2026-10-31 before calling.
+    y       : actual underlying demand (UTC indexed)
+    temp_proxy : local date-indexed temp proxy (datetime.date keys; NaN if unavailable)
+    raw_q   : RAW (pre-calibration) quantiles for high-demand day selection (§6).
+              If None, falls back to cal_q (use only in tests where raw_q == cal_q).
 
     Returns
     -------
-    dict: coverage values, day counts, verdict, and reason string.
+    dict with coverage values, n_days counts, bootstrap CI for co-primary 2,
+    verdict, and reason string.
     """
     local_dates = pd.Series(
         cal_q.index.tz_convert(TZ).normalize().tz_localize(None), index=cal_q.index
@@ -244,18 +315,22 @@ def compute_criteria(
     jf_lo = pd.Timestamp("2026-01-01")
     jf_hi = pd.Timestamp("2026-02-28")
     mask_jan_feb = cal_q.index[(local_dates >= jf_lo) & (local_dates <= jf_hi)]
+    n_days_jan_feb = int(local_dates[mask_jan_feb].nunique())
 
     # §8.2 Co-primary 2: high-demand days, full Jan-Oct window
-    daily_max_q50 = cal_q["q50"].groupby(local_dates).max()
-    hd_dates: set[datetime.date] = set(
+    # Protocol §6: select using RAW q50 (pre-calibration), not calibrated q50
+    _q_for_hd = raw_q if raw_q is not None else cal_q
+    daily_max_q50 = _q_for_hd["q50"].groupby(local_dates).max()
+    hd_dates: set[datetime.date] = {
         d.date()
         for d, v in daily_max_q50.items()
         if v >= HIGH_DEMAND_THRESHOLD_MW
-    )
+    }
     mask_hd = cal_q.index[local_dates.map(lambda ts: ts.date()).isin(hd_dates)]
 
     # §8.3 Secondary: overall Jan-Oct (all of cal_q — caller already restricted it)
     mask_jan_oct = cal_q.index
+    n_days_jan_oct = int(local_dates.nunique())
 
     # §8.4 Cold days: descriptive
     cold_dates: set[datetime.date] = {
@@ -273,14 +348,23 @@ def compute_criteria(
     n_hd = len(hd_dates)
     n_cold = len(cold_dates)
 
+    # 95% block-bootstrap CI for co-primary 2 (by day, 1,000 resamples, seed 42)
+    ci_hd_lo, ci_hd_hi = _block_bootstrap_ci_coverage(
+        cal_q, y, hd_dates, block_size=7, n_boot=1_000, seed=42
+    )
+
     verdict, reasons = _make_verdict(cov_jan_feb, cov_hd, n_hd, cov_jan_oct, cov_cold, n_cold)
 
     return {
         "coverage_90_jan_feb": round(cov_jan_feb, 2) if np.isfinite(cov_jan_feb) else float("nan"),
+        "n_days_jan_feb": n_days_jan_feb,
         "coverage_90_jan_oct": round(cov_jan_oct, 2) if np.isfinite(cov_jan_oct) else float("nan"),
+        "n_days_jan_oct": n_days_jan_oct,
         "coverage_90_high_demand": round(cov_hd, 2) if np.isfinite(cov_hd) else float("nan"),
-        "coverage_90_cold": round(cov_cold, 2) if np.isfinite(cov_cold) else float("nan"),
         "n_high_demand_days": n_hd,
+        "ci_high_demand_lo": round(ci_hd_lo, 2) if np.isfinite(ci_hd_lo) else float("nan"),
+        "ci_high_demand_hi": round(ci_hd_hi, 2) if np.isfinite(ci_hd_hi) else float("nan"),
+        "coverage_90_cold": round(cov_cold, 2) if np.isfinite(cov_cold) else float("nan"),
         "n_cold_days": n_cold,
         "verdict": verdict,
         "reasons": reasons,
@@ -315,10 +399,11 @@ def run(
     q2026 = pd.read_parquet(q2026_path)
     _date_guard(q2026)
 
-    # --- Load 2026 actuals ---
+    # --- Load 2026 actuals and apply date guard ---
     demand_2026 = pd.read_parquet(
         demand_2026_path, columns=["underlying_demand"]
     )
+    _date_guard(demand_2026)  # guard on demand file (§7)
     y_2026 = demand_2026["underlying_demand"]
 
     # --- Combine quantiles and actuals ---
@@ -357,7 +442,17 @@ def run(
     )
 
     # --- Compute §8 criteria ---
-    result = compute_criteria(cal_q, y_eval, temp_eval)
+    # Pass raw q2026 so high-demand day selection uses RAW q50 (protocol §6)
+    q2026_local = q2026.copy()
+    local_q2026 = pd.Series(
+        q2026_local.index.tz_convert(TZ).normalize().tz_localize(None),
+        index=q2026_local.index,
+    )
+    raw_q_eval = q2026_local[
+        (local_q2026 >= pd.Timestamp(str(CS3_START)))
+        & (local_q2026 <= pd.Timestamp(str(CS3_END)))
+    ]
+    result = compute_criteria(cal_q, y_eval, temp_eval, raw_q=raw_q_eval)
 
     # --- Write outputs ---
     _write_outputs(result, out_dir)
@@ -368,36 +463,59 @@ def run(
 
 def _write_outputs(result: dict, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
+    nan = float("nan")
     metrics_rows = [
         {
-            "period": "Jan-Feb 2026",
+            "period": "Jan-Feb 2026 (co-primary 1)",
             "coverage_90_pct": result["coverage_90_jan_feb"],
-            "n_days": None,
+            "n_days": result["n_days_jan_feb"],
+            "ci_lo_pct": nan,
+            "ci_hi_pct": nan,
         },
         {
-            "period": "Jan-Oct 2026 (high-demand)",
+            "period": "Jan-Oct 2026 (co-primary 2: high-demand)",
             "coverage_90_pct": result["coverage_90_high_demand"],
             "n_days": result["n_high_demand_days"],
+            "ci_lo_pct": result["ci_high_demand_lo"],
+            "ci_hi_pct": result["ci_high_demand_hi"],
         },
         {
-            "period": "Jan-Oct 2026 (overall)",
+            "period": "Jan-Oct 2026 (secondary: overall)",
             "coverage_90_pct": result["coverage_90_jan_oct"],
-            "n_days": None,
+            "n_days": result["n_days_jan_oct"],
+            "ci_lo_pct": nan,
+            "ci_hi_pct": nan,
         },
         {
             "period": "Jan-Oct 2026 (cold, descriptive)",
             "coverage_90_pct": result["coverage_90_cold"],
             "n_days": result["n_cold_days"],
+            "ci_lo_pct": nan,
+            "ci_hi_pct": nan,
         },
     ]
     pd.DataFrame(metrics_rows).to_csv(out_dir / "metrics_by_period.csv", index=False)
 
+    ci_lo = result["ci_high_demand_lo"]
+    ci_hi = result["ci_high_demand_hi"]
+    ci_str = (
+        f"[{ci_lo:.1f}%, {ci_hi:.1f}%]"
+        if np.isfinite(ci_lo) and np.isfinite(ci_hi)
+        else "n/a (no high-demand days or insufficient data)"
+    )
     full_metrics = {
         k: v for k, v in result.items() if k not in ("verdict", "reasons")
     }
     verdict_txt = (
         f"CS-3 VERDICT: {result['verdict']}\n\n"
         f"{result['reasons']}\n\n"
+        f"Co-primary 2 (high-demand) 95% bootstrap CI: {ci_str} "
+        f"(n_days={result['n_high_demand_days']}, block_size=7, n_boot=1000, seed=42)\n\n"
+        f"n_days by period:\n"
+        f"  Jan-Feb:          {result['n_days_jan_feb']}\n"
+        f"  Jan-Oct overall:  {result['n_days_jan_oct']}\n"
+        f"  High-demand:      {result['n_high_demand_days']}\n"
+        f"  Cold (descrip.):  {result['n_cold_days']}\n\n"
         f"Full metrics:\n{json.dumps(full_metrics, indent=2)}\n\n"
         f"Protocol: docs/cs3_protocol.md\n"
         f"Frozen threshold: {HIGH_DEMAND_THRESHOLD_MW} MW\n"
