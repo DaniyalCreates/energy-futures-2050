@@ -49,8 +49,8 @@ purposes. The CS-3 approval gate in §2 refers to these unaccessed data sources.
 ## 4. Method
 
 **Method:** Baseline rolling unconditional CQR — identical to the method frozen at
-commit 304b7d8 on branch `improve/phase-b`. No code changes are permitted before
-running CS-3.
+commit 304b7d8 on branch `improve/phase-b`. No changes to method code; the wrapper
+and data scripts listed here must be committed before approval.
 
 **Calibration window:** Rolling 365-day window, identical to CS-2b baseline.
 

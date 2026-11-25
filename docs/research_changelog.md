@@ -9,6 +9,28 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 16 · 25 Nov 2026 · Restore DECISIONS.md D-038; add D-042; tidy cs3_protocol.md §4
+
+- **Goal:** Restore D-038 to its original Batch 6 wording (Stage 11 had modified it
+  in-place instead of adding a correction row). Add D-042 as the correction row.
+  Tidy §4 of cs3_protocol.md to replace an outdated prohibition.
+- **DECISIONS.md — D-038 restored:**
+  Original wording (Batch 6, pre-Stage 11): "Verdict: H1 and H3 met on point estimates,
+  but tail-metric gains are not statistically significant; mean-cost gain is significant.
+  The KTP claim is limited accordingly"
+  Stage 11 had changed this in-place; now reverted to above.
+- **DECISIONS.md — D-042 added (new row):**
+  `| D-042 | 2026-11-25 | Correction to D-038: H1 as pre-registered (p95 AND shortfall
+  AND mean ≤ B+1%) is not statistically supported; the mean-cost gain is an exploratory
+  secondary finding (statistical_tests.md §3.4). |`
+- **docs/cs3_protocol.md §4 — wording tidied:**
+  Replaced: "No code changes are permitted before running CS-3."
+  With: "No changes to method code; the wrapper and data scripts listed here must be
+  committed before approval."
+  (The wrapper and download scripts are now committed; this wording matches reality.)
+- **No code changes.** No tests changed. No 2026 data downloaded.
+- **Files:** `DECISIONS.md`, `docs/cs3_protocol.md`
+
 ## Stage 15 · 25 Nov 2026 · Fix cs3_confirmation.py: raw q50 for hd selection, bootstrap CI, n_days, demand guard, weather error
 
 - **Goal:** Five targeted corrections to `cs3_confirmation.py` identified in review; tests for each.
