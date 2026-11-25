@@ -1,6 +1,6 @@
 # CS-3 Protocol — confirmation run on 2026 data
 
-_Status: **DRAFT – NOT approved by Dani**_
+_Status: **APPROVED by Dani — 2026-11-25**_
 _Branch: improve/phase-b | Date: 2026-11-25_
 _Parent pre-registration: docs/cs2_preregistration.md §8.5_
 
