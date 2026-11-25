@@ -9,6 +9,35 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 10 · 25 Nov 2026 · CS-3 protocol rewrite
+
+- **Goal:** Rewrite `docs/cs3_protocol.md` with precise, non-ambiguous specifications
+  identified in review of commit be16f54.
+- **Key changes:**
+  - Status: "DRAFT – NOT approved by Dani" (was "DRAFT — committed before any 2026 data").
+  - Removed "This document is Dani's written approval" — approval now requires explicit
+    status change and commit by Dani.
+  - Evaluation window fixed: 2026-01-01..2026-10-31 (was "determined at run time").
+    If data missing, report available days; no extension.
+  - Method fully specified: baseline exactly as at commit 304b7d8; GBMQuantile refit
+    schedule "QS" (quarterly start), train from 2009-01-01; Mac machine (arm64 Darwin).
+    Package versions recorded (Python 3.12.16, lightgbm 4.7.0, numpy 2.5.5, pandas 3.1.1).
+  - High-demand threshold frozen: **44,411.96 MW** (95th percentile of daily-max raw q50
+    over 2023-2025 eval window; computed from actual CS-2b data).
+  - Pass criteria rewritten:
+    - Co-primary 1: Coverage_90 on Jan-Feb 2026 ∈ [85%, 95%] (was 2026-Q1, [87%, 95%]).
+    - Co-primary 2: Coverage_90 on high-demand days Jan-Oct ≥ 80% (point estimate);
+      report 95% CI and n (was 2026-Q1 high-demand [75%, 100%]).
+    - Secondary: overall Jan-Oct ∈ [88%, 92%] (expected range; not formal pass/fail).
+    - Cold days: descriptive only.
+  - Explicit PASS / FAIL / MIXED / INCONCLUSIVE reporting table added.
+  - Exact download steps and sources for each 2026 data type, each with 2026-only guard.
+  - Disclosure of 15,425 rows of NESO 2026 benchmark data already on disk (Batch 4,
+    never used for modelling; two rows printed once). Added as §3.
+  - Removed "dissertation".
+- **No 2026 data downloaded or opened.**
+- **Files:** `docs/cs3_protocol.md` (rewritten)
+
 ## Stage 9 · 25 Nov 2026 · CS-4 stats script + regenerated statistical tests report
 
 - **Goal:** Make DM tests and Holm correction reproducible from a committed script;

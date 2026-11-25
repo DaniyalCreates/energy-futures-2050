@@ -1,147 +1,236 @@
 # CS-3 Protocol — confirmation run on 2026 data
 
-_Status: DRAFT — committed before any 2026 data is downloaded or opened._
-_Branch: improve/phase-b | Date: 2026-11-24_
+_Status: **DRAFT – NOT approved by Dani**_
+_Branch: improve/phase-b | Date: 2026-11-25_
 _Parent pre-registration: docs/cs2_preregistration.md §8.5_
 
 ---
 
-## 1. Motivation and status
+## 1. Purpose
 
 CS-2b selected the **baseline** (rolling unconditional CQR) as the method to carry
 forward: no candidate met the pre-registered improvement threshold for cold-day
-Coverage_90. The confirmation run therefore applies the same baseline method to
+Coverage_90. The confirmation run applies the same baseline method to truly unseen
 2026 data as a consistency check: does the baseline continue to deliver approximately
-its historical coverage rate when facing truly unseen data?
+its historical coverage rate when facing 2026 conditions?
 
 This run is **not** a test of a new method. Its purpose is to verify that the baseline
-calibration is not over-fitted to 2022-25 and that Coverage_90 on 2026 data is
-consistent with CS-1 and CS-2b findings.
+calibration is not over-fitted to 2022-25.
 
 ---
 
-## 2. This document must be committed before any 2026 data is accessed
+## 2. Approval gate
 
-Per CLAUDE.md and the pre-registration §10:
-> Do not access, download, or open 2026 data before the confirmation run is approved.
+**This document must be approved and committed BEFORE any 2026 data is downloaded
+or opened.**
 
-This document is Dani's written approval of the CS-3 protocol. No 2026 data should be
-downloaded, opened, or used until this document is committed to `improve/phase-b`.
+This document is a DRAFT. It is NOT yet approved by Dani. No 2026 data should be
+downloaded, opened, or loaded into any script until Dani explicitly approves by
+changing the status line above to "APPROVED by Dani — [date]" and committing that
+change to `improve/phase-b`.
 
 ---
 
-## 3. Method
+## 3. Disclosure: 2026 data already on disk (Batch 4)
 
-**Method:** Baseline rolling unconditional CQR (identical to CS-2b baseline; no changes).
+As noted in the ground rules of `docs/research_changelog.md`:
 
-**Script:** `energy_futures/experiments/cs2_rolling_eval.py` or a minimal wrapper that
-calls `load_development_data()` with 2026 data added, then `evaluate()` restricted to
-the 2026 evaluation window.
+> The NESO day-ahead benchmark file already on disk contains 2026 rows.
+> They were loaded in Batch 4 but never used for modelling; two rows (18 Nov 2026)
+> were printed once while checking the file format. The 15,425 rows of 2026 NESO
+> benchmark data remain on disk untouched.
 
-**Quantile model:** The existing Mac-generated model (via `quantiles_FW_raw_mac_2024-2025.parquet`
-for the calibration history). For 2026 predictions, the GBMQuantile model must be
-re-run on 2026 demand and forecast weather data to produce `quantiles_FW_raw_mac_2026.parquet`
-(new file, same quarterly-refit GBMQuantile config).
+This disclosure applies only to the NESO benchmark ND forecast file. No 2026 actual
+demand, observed temperature, or forecast weather data has been accessed for modelling
+purposes. The CS-3 approval gate in §2 refers to these unaccessed data sources.
+
+---
+
+## 4. Method
+
+**Method:** Baseline rolling unconditional CQR — identical to the method frozen at
+commit 304b7d8 on branch `improve/phase-b`. No code changes are permitted before
+running CS-3.
 
 **Calibration window:** Rolling 365-day window, identical to CS-2b baseline.
 
+**CQR interval:** 90% (α = 0.10), consistent with CS-1 and CS-2b.
+
+**Script:** `energy_futures/experiments/cs2_rolling_eval.py` (or a minimal wrapper
+calling `load_development_data()` with 2026 data appended, then `evaluate()` restricted
+to 2026). No parameters may be changed from the frozen version.
+
 ---
 
-## 4. Evaluation period
+## 5. Quantile model
+
+**Model:** GBMQuantile (LightGBM quantile regression), 7 quantile levels
+(τ = 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95), forecast-weather inputs (FW).
+
+**Hyperparameters:** As in EXP-004 (`configs/advanced.yaml`):
+- `random_state = 42`
+- `n_jobs = -1`
+- `n_estimators = 600`
+- Train start: 2009-01-01
+
+**Refit schedule:** Quarterly start (`"QS"`) — model refitted at the start of each
+calendar quarter, as in EXP-004 and the Mac regeneration run (commit 304b7d8).
+
+**Machine:** Dani's Mac (arm64 Darwin). The same machine that produced
+`quantiles_FW_raw_mac_2024-2025.parquet`. LightGBM parallelism is architecture-dependent
+(see Amendment 2 addendum in cs2_preregistration.md §12); using the same machine
+ensures internal consistency.
+
+**Package versions at time of protocol draft:**
+- Python: 3.12.16
+- lightgbm: 4.7.0
+- numpy: 2.5.5
+- pandas: 3.1.1
+- platform: arm64 Darwin
+
+Package versions must be recorded again at the time of the actual run and compared
+to these. Any version change must be noted in the changelog.
+
+**New output file:** `outputs/v3_cs3_confirmation/inputs/quantiles_FW_raw_mac_2026.parquet`
+(2026-01-01..2026-10-31; never overwrites CS-2b files).
+
+---
+
+## 6. High-demand threshold (frozen)
+
+The high-demand threshold used for CS-3 is frozen at the CS-2 value:
+
+> **Threshold: 44,411.96 MW**
+
+This is the 95th percentile of daily-maximum raw q50 over the full CS-2b evaluation
+window (2023-01-01..2025-12-31), computed from `quantiles_FW_raw_mac_2024-2025.parquet`
+and `quantiles_2022_2023.parquet`. It was used throughout CS-2b and must be carried
+forward unchanged.
+
+A day qualifies as high-demand in CS-3 if its daily-maximum q50 ≥ 44,411.96 MW
+(where q50 is from the CS-3 GBMQuantile forecast for that day).
+
+---
+
+## 7. Evaluation period
 
 **Start:** 2026-01-01  
-**End:** Determined by data availability at run time (expected 2026-01 to 2026-10 or later).
+**End:** 2026-10-31 (fixed)
 
-**Evaluation quarters (provisional — fixed at run time):**
-- 2026-Q1 (Jan–Mar 2026): co-primary metric
-- 2026-Q2 (Apr–Jun 2026): secondary if available
-- 2026-Q3 (Jul–Sep 2026): secondary if available
-- 2026-Q4 (Oct–Dec 2026): secondary if available; may be partial
-
-2026-Q1 is the only quarter guaranteed to contain winter months (Jan-Feb), making it
-the most informative for cold-day consistency.
+If data are unavailable for the full window, the run proceeds with the available
+dates, the number of available days is reported, and no extension of the window is
+permitted. The pass criteria in §8 are assessed on whatever half-hours are available
+within 2026-01-01..2026-10-31.
 
 ---
 
-## 5. Pre-declared pass criteria
+## 8. Pre-declared pass criteria
 
-**Primary metric 1 — Overall Coverage_90 on 2026-Q1:**
+These criteria are fixed by this document and may not be changed after any 2026 data
+is loaded.
 
-> PASS if 2026-Q1 overall Coverage_90 ∈ [87%, 95%].
+### Co-primary criterion 1 — Coverage_90, Jan-Feb 2026
 
-This is a wider interval than the CS-2b selection guard of [87%, 93%], to allow for
-small-sample variability in a single quarter (≈90 days, ≈4 320 half-hours).
-A result below 87% suggests the baseline is degrading. A result above 95% suggests
-the intervals are over-wide. Either would warrant investigation before publication.
+> **PASS if Coverage_90 on 2026-01-01..2026-02-28 half-hours ∈ [85%, 95%].**
 
-**Primary metric 2 — High-demand Coverage_90 on 2026-Q1:**
+Motivation: January-February is the highest-risk period for the interval (most cold,
+high-demand, and volatile conditions). The window is ≈ 59 days (≈ 2 832 half-hours).
+The bounds [85%, 95%] are wider than the CS-2b overall bounds [87%, 93%] to allow
+for single-period variability. A result below 85% suggests interval degradation.
+A result above 95% suggests over-width.
 
-> PASS if 2026-Q1 high-demand Coverage_90 ∈ [75%, 100%].
+### Co-primary criterion 2 — Coverage_90, high-demand days, Jan-Oct 2026
 
-The wide lower bound (75%) reflects the small high-demand sample per quarter (typically
-5–15 days). The 2024-Q4 cold under-coverage (62.5%) observed in CS-2b is an existence
-proof that short periods can be highly variable; the CS-3 criterion is set generously
-to detect only severe degradation.
+> **PASS if point estimate of Coverage_90 on high-demand days (2026-01-01..2026-10-31)
+≥ 80%. Report the 95% bootstrap CI and n (number of high-demand days).**
 
-**Reporting-only metrics (not formal pass/fail):**
-- Cold-proxy Coverage_90 on 2026-Q1 (expected too few cold days for formal inference)
-- Coverage_90 for all available 2026 quarters (Q2-Q4 if present)
-- Coverage_80, Coverage_50 for 2026-Q1
+High-demand day definition: daily-maximum q50 ≥ 44,411.96 MW (threshold frozen in §6).
+Expected n ≈ 18–22 days (5% of ≈ Jan-Oct ≈ 304 days). No lower bound is set for n;
+if n < 5 the CI is too wide for inference and the result is reported as descriptive only.
 
-**Failure action:** If either primary metric fails:
+### Secondary — overall Coverage_90, Jan-Oct 2026
+
+> **Expected range [88%, 92%]** — not a formal pass/fail criterion; reported for
+> consistency with CS-1 and CS-2b overall results.
+
+### Cold days — descriptive only
+
+Cold-day Coverage_90 (temp_proxy < 3 °C, archived forecast for 2026) is reported
+but not subject to any pass/fail criterion. Expected n is small (< 20 days).
+
+---
+
+## 9. Reporting: PASS, FAIL, mixed
+
+| Scenario | Label | Action |
+|----------|-------|--------|
+| Both co-primaries PASS | PASS | Report as confirmation of baseline validity |
+| Either co-primary FAILS | FAIL | Report verbatim; investigate before publication |
+| Co-primary 2 has n < 5 high-demand days | INCONCLUSIVE (high-demand) | Report co-primary 1 verdict only; note data insufficiency |
+| Co-primary 1 PASS, co-primary 2 FAIL | MIXED | Report both results; note inconsistency |
+
+**Failure action:** If either primary metric fails (or is MIXED):
 1. Report the finding verbatim.
-2. Do not publish as a successful validation.
-3. Investigate whether failure is due to data quality, a distributional shift, or a
-   code error.
-4. Seek Dani's guidance before any further action.
+2. Do not report as a successful validation.
+3. Investigate whether failure is due to data quality, distributional shift, or a code error.
+4. Seek Dani's guidance before any further step.
+
+**No result will be suppressed or retrospectively re-labelled.**
 
 ---
 
-## 6. Data requirements
+## 10. Data download steps
 
-| Data needed | Source | Guard |
-|-------------|--------|-------|
-| Actual underlying demand, 2026 | NESO (via pipeline) | Only for 2026-01-01 onward |
-| Observed temperature, 2026 | demand_weather pipeline | Only for 2026-01-01 onward |
-| Forecast temperature, 2026 | Open-Meteo archived forecasts | Only for 2026-01-01 onward |
-| Forecast radiation, 2026 | Open-Meteo archived forecasts | Only for 2026-01-01 onward |
+Each download is guarded to 2026-01-01..2026-10-31 only.
 
-**2026 data is reserved for ONE run.** Once any 2026 data has been loaded for this
-run, no changes to the method, thresholds, or reporting criteria are permitted.
+| Data | Source | Download command / path | 2026 guard |
+|------|--------|------------------------|------------|
+| Actual underlying demand | NESO API (same pipeline as `data/processed/demand_weather.parquet`) | Existing pipeline; append 2026 rows; save to `data/processed/demand_weather_2026.parquet` | Restrict to 2026-01-01 onward |
+| Observed temperature (GB mean) | Same demand_weather pipeline (ERA5 / Open-Meteo historical) | Append to same 2026 file | Restrict to 2026-01-01 onward |
+| Archived forecast temperature, 2026 | Open-Meteo API (same endpoint as 2024-25 JSON files in `data/raw/weather_forecast/`) | Per-city JSON files `{city}_2026.json`; same 6 cities as EXP-004 | Only request 2026-01-01..2026-10-31 |
+| Archived forecast radiation, 2026 | Open-Meteo API (same endpoint) | Included in city JSON files above | Only request 2026-01-01..2026-10-31 |
+
+**None of these downloads should be run until Dani approves this protocol (§2).**
+
+**2026 data is reserved for ONE run.** Once any 2026 actual demand or weather data has
+been loaded for model running or evaluation, no changes to the method, thresholds, or
+pass criteria are permitted.
 
 ---
 
-## 7. Prohibitions (from pre-registration §10, repeated here)
+## 11. Prohibitions
 
-- Do not change the calibration method, window, or thresholds before or after seeing
-  2026 results.
-- Do not modify the pass criteria in §5 after any 2026 data has been accessed.
-- Do not use 2026 data for any other purpose (e.g., model retraining, feature selection,
+- Do not change the calibration method, window, thresholds, or pass criteria before
+  or after seeing 2026 results.
+- Do not modify the pass criteria in §8 after any 2026 data has been accessed.
+- Do not use 2026 data for any other purpose (model retraining, feature selection,
   additional experiments) without Dani's explicit approval.
-- Do not modify `outputs_archive/v1_5db4552/`.
+- Do not modify `outputs_archive/v1_5db4552/` or any CS-2b outputs.
+- Do not access 2026 data before Dani approves this protocol (§2).
 
 ---
 
-## 8. Outputs
+## 12. Outputs
 
-All results to `outputs/v3_cs3_confirmation/` (new versioned folder, never overwrites CS-2b).
+All results to `outputs/v3_cs3_confirmation/` (new versioned folder).
 
 Required files:
-- `metrics_by_quarter.csv` (CS-3 quarters only)
-- `metrics_pooled.csv` (over all 2026 evaluation data)
-- `sanity_check.txt` (baseline 2026-Q1 vs pass criteria §5)
-- `cs3_verdict.txt` (PASS / FAIL with values and reasons)
+- `inputs/quantiles_FW_raw_mac_2026.parquet` (raw GBMQuantile FW predictions, 2026)
+- `metrics_by_period.csv` (Jan-Feb and Jan-Oct breakdowns, plus cold days)
+- `cs3_verdict.txt` (PASS / FAIL / MIXED / INCONCLUSIVE with values, criteria, and reasons)
+- `package_versions.txt` (Python, lightgbm, numpy, pandas, platform at run time)
 
 ---
 
-## 9. Relationship to publication
+## 13. Relationship to write-up
 
-The CS-3 confirmation run result — PASS or FAIL — will be reported verbatim in the
-technical report (§7 of `docs/technical_report.md`). No result will be suppressed or
+The CS-3 confirmation run result — PASS, FAIL, MIXED, or INCONCLUSIVE — will be
+reported verbatim in `docs/technical_report.md` (§7). No result will be suppressed or
 retrospectively re-labelled.
 
-If the baseline PASSES: the dissertation and KTP case study may state that the existing
-calibration is validated on 2026 data.
+If the baseline PASSES: the write-up may state that the baseline calibration is
+validated on 2026 data.
 
-If the baseline FAILS: the write-up will note the failure and its implication (the
-baseline may be over-fitted to 2022-25 patterns; the intervals may need refinement).
+If the baseline FAILS or is MIXED: the write-up will note the failure and its
+implication (the baseline may be over-fitted to 2022-25 patterns; the intervals may
+need refinement).
