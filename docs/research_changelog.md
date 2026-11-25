@@ -9,6 +9,33 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 22 · 25 Nov 2026 · Launch preparation: README rewrite, .gitignore, LICENSE, safety scan
+
+- **Goal:** Prepare the repository for publication (not yet pushed).
+- **(a) README.md rewritten** for a recruiter audience: 6-line plain-English intro,
+  headline results table (forecast MAE vs naive and vs NESO, CS-3 verdict with cold-day
+  caveat, battery decision result with significance caveat), reproduce commands, project
+  structure table, honest status and limitations pointer, data attribution section.
+- **(b) Safety scan findings:**
+  - No secrets, API keys, or `.env` files in tracked files. `.env.example` is a benign
+    template only.
+  - No files over 50 MB.
+  - No absolute `/Users/daniyaltariq` paths in Python or YAML files.
+  - `CLAUDE.md` (tracked) contains the commit email `tariqdaniyal048@gmail.com` and a
+    reference to the path of a separate dissertation project. This becomes public with the
+    repo — Dani to decide whether to remove or gitignore before push.
+  - `docs/release_checklist.md` also mentions the email in a decision item.
+  - `Energy_Futures_2050_Progress_and_Improvement.pdf` was untracked and unignored;
+    added `*.pdf` to `.gitignore`.
+  - `outputs_archive/` and `data/` are already gitignored; `outputs/` placeholder only
+    (.gitkeep); `*.parquet` and `*.csv.gz` already gitignored.
+- **(c) Data attribution:** present in README (NESO Open Data Licence, Open-Meteo CC BY
+  4.0 with links).
+- **(d) LICENSE created:** MIT, Copyright (c) 2026 Daniyal Tariq.
+- **(e) Tests:** 201 passed.
+- **Upload size:** 1.9 MB across 102 files (code, docs, figures, configs, uv.lock).
+  No raw data, processed data, model outputs, or outputs_archive in the upload.
+
 ## Stage 21 · 25 Nov 2026 · cs3_confirmation.md wording: Disclosure 2, cold-day caveat, bootstrap detail
 
 - **Goal:** Three wording corrections to `docs/results/cs3_confirmation.md`:

@@ -46,3 +46,6 @@ dist/
 
 # Frozen archives of earlier results (kept locally, never uploaded)
 outputs_archive/
+
+# Local progress reports / personal documents
+*.pdf

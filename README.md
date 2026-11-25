@@ -1,65 +1,98 @@
 # Energy Futures 2050
 
-**Uncertainty-aware forecasting and risk-aware flexibility planning for Great Britain's electricity system: an open, reproducible research prototype.**
+An open, reproducible research prototype asking: **does uncertainty-aware machine
+learning improve electricity flexibility planning compared with conventional forecasting
+and deterministic decisions?** Built in Python using real GB half-hourly demand data
+(2009–2025) and a pre-registered 2026 confirmation run on genuinely unseen data. The
+pipeline covers data acquisition, cleaning, day-ahead demand forecasting, scenario
+simulation against NESO Future Energy Scenarios 2025, and constrained battery scheduling.
+All experiments are pre-registered and reproducible from one command each; raw data is
+not redistributed.
 
-> **Research question:** can uncertainty-aware machine learning, combined with scenario simulation and constrained optimisation, make electricity flexibility planning more robust than conventional forecasting and deterministic decisions?
+## Results at a glance
 
-## Key results (pre-registered experiments)
+| Metric | Value |
+|--------|-------|
+| Day-ahead demand forecast MAE (LightGBM, real weather forecasts) | **664 MW (2.2%)** — 48% better than seasonal naive |
+| vs NESO's operational forecast (National Demand) | **995 vs 653 MW** — NESO more accurate |
+| Calibrated 90% interval coverage (test, 2024–25) | **90.5%** (target 90%) |
+| 2026 confirmation run (CS-3, pre-registered) | **PASS** — Jan–Feb 89.8%, high-demand days 90.9% (n=17, 95% CI 82.8–95.8%) |
+| Cold-day coverage (temp < 3 °C, n=11, descriptive) | **84.7%** — a known weakness; not a pass/fail criterion |
+| Battery value captured vs perfect foresight | fixed rule **38%** · point LP **61%** · calibrated CVaR **64%** |
+| Is risk-awareness better? | Yes on average cost (significant); **not for tail risk** (CI includes 0) |
 
-| | Result |
-| --- | --- |
-| Day-ahead demand forecast (LightGBM, real weather forecasts) | **664 MW MAE (2.2%)**, 48% better than seasonal naive; test period 8 Mar 2024 – 31 Dec 2025 |
-| Versus NESO's operational forecast (National Demand) | **995 vs 653 MW**: NESO is more accurate |
-| Calibrated uncertainty (conformal) | 90% intervals cover **90.5%** of outcomes |
-| FES 2025 futures | Holistic Transition peak **+57 GW by 2050** (FES: +62 GW). A cold, still week needs ~10 TWh in 7 days in 2050 |
-| Battery decisions, share of perfect-foresight value | fixed rule **38%** · point forecast + LP **61%** · calibrated quantiles + CVaR **64%** |
-| Is risk-aware better? | Yes on average cost (significant); **not significantly** for tail risk |
+**Short answer:** optimising at all and forecast accuracy matter most. Uncertainty-awareness
+adds a small, consistent average-cost gain that grows when storage is scarce. The headline
+hypothesis is not statistically supported for tail risk with 22 months of data.
 
-**Answer so far:** optimising at all and forecast accuracy matter most. Uncertainty-awareness adds a small, consistent gain that grows when storage is scarce. Full reasoning: [`docs/technical_report.md`](docs/technical_report.md).
+Full reasoning: [`docs/technical_report.md`](docs/technical_report.md) ·
+Limitations: [`docs/technical_report.md#7-limitations`](docs/technical_report.md)
 
-**What this is not:** a physical network model, a validated digital twin, or a prediction of the 2050 system. Costs are a stylised index, not money.
-
-## Reproduce
+## How to reproduce
 
 Requires [uv](https://docs.astral.sh/uv/) (macOS: `brew install uv libomp`).
 
 ```bash
-uv sync                                              # exact environment from uv.lock (Python 3.12)
-uv run pytest                                        # 69 tests (data-dependent ones skip until data exists)
-uv run python -m energy_futures.pipeline all         # download + build the dataset
-uv run python -m energy_futures.ingest.benchmarks    # NESO day-ahead forecasts, archived weather forecasts
-uv run python -m energy_futures.ingest.fes           # FES 2025 tables
-uv run streamlit run dashboard/app.py                # research dashboard (after running the experiments)
+uv sync                                               # exact environment from uv.lock (Python 3.12)
+uv run pytest -q                                      # 201 tests (data-dependent ones skip until data exists)
+uv run python -m energy_futures.pipeline all          # download + build the dataset (~10 min, needs internet)
+uv run python -m energy_futures.ingest.benchmarks     # NESO day-ahead forecasts + archived weather forecasts
+uv run python -m energy_futures.ingest.fes            # FES 2025 tables
 ```
 
-The full experiment sequence is listed in [`docs/release_checklist.md`](docs/release_checklist.md#deployment-instructions) (about 45 minutes). Run commands from the project folder. The package sits at the top level (`energy_futures/`), so `python -m energy_futures...` works even when macOS hides the editable-install `.pth` file (D-029).
+The full experiment sequence (about 45 minutes total) is in
+[`docs/release_checklist.md`](docs/release_checklist.md#deployment-instructions). Run
+all commands from the project folder. The 2026 confirmation data should not be
+re-downloaded without reading `docs/cs3_protocol.md` first.
 
-## Documents
+```bash
+uv run streamlit run dashboard/app.py                 # interactive research dashboard (after running experiments)
+```
 
-| Document | Contents |
-| --- | --- |
-| [Technical report](docs/technical_report.md) | Question, related work, data, methods, results, limitations, future work |
-| [KTP case study](docs/ktp_case_study.md) | Business problem, contribution, hypothetical commercial use, skills |
-| [Forecasting](docs/results/forecasting_report.md) · [Scenarios](docs/results/scenarios_report.md) · [Optimisation](docs/results/optimisation_report.md) | Detailed results per phase |
-| [Data dictionary](docs/data_dictionary.md) · [Assumptions](docs/assumptions.md) | Definitions, provenance, every modelling assumption |
-| [Reproducibility audit](docs/reproducibility_audit.md) | Fresh-clone rerun vs recorded results |
-| `DECISIONS.md` · `EXPERIMENT_LOG.md` · `CHANGELOG.md` · `PROJECT_STATUS.md` | Decision log, experiment records, history, current state |
-
-## Project layout
+## Project structure
 
 ```text
-configs/            experiment configurations (YAML), incl. pre-registered protocols
-energy_futures/     ingest/ clean/ features/ forecast/ uncertainty/ scenarios/ optimise/ evaluate/ experiments/
+configs/            experiment configurations (YAML) and pre-registered protocols
+energy_futures/     ingest/ clean/ features/ forecast/ uncertainty/
+                    scenarios/ optimise/ evaluate/ experiments/
 dashboard/app.py    Streamlit research dashboard
-tests/              69 automated tests (leakage, calibration, energy conservation, LP physics, dashboard)
-docs/               reports, figures, data dictionary, assumptions
+tests/              201 automated tests: leakage, calibration, energy conservation,
+                    LP physics, dashboard, CS-3 guards
+docs/               technical report, results, figures, data dictionary, assumptions,
+                    pre-registration documents (cs2_preregistration.md, cs3_protocol.md)
 data/, outputs/     git-ignored; regenerated by the pipeline and experiments
 ```
 
-## Data and licences
+Key documents:
 
-- NESO Historic Demand, Day-Ahead Forecast Performance and FES 2025: NESO Open Data Licence. "Supported by National Energy SO Open Data".
-- Weather data by [Open-Meteo.com](https://open-meteo.com/) (ERA5 reanalysis and archived forecasts), CC BY 4.0. The free API tier is non-commercial.
-- Raw data is not redistributed; the pipeline downloads it. Code licence: to be confirmed before publication.
+| Document | Contents |
+|----------|----------|
+| [Technical report](docs/technical_report.md) | Methods, results, limitations, future work |
+| [KTP case study](docs/ktp_case_study.md) | Business problem and commercial context |
+| [Forecasting](docs/results/forecasting_report.md) · [Scenarios](docs/results/scenarios_report.md) · [Optimisation](docs/results/optimisation_report.md) | Detailed results per phase |
+| [CS-3 confirmation](docs/results/cs3_confirmation.md) | 2026 out-of-sample confirmation report |
+| [Data dictionary](docs/data_dictionary.md) · [Assumptions](docs/assumptions.md) | Definitions and modelling assumptions |
+| `DECISIONS.md` · `EXPERIMENT_LOG.md` | Decision log and experiment records |
 
-Author: Daniyal Tariq (MSc AI & Data Science, University of Hull).
+## Status and limitations
+
+The research prototype is complete (50 roadmap steps, Batches 1–8 plus CS-3 confirmation).
+No network model, no real prices, no physical constraints beyond a single aggregated
+battery. Scenario outputs are explorations, not predictions. The forecaster trails NESO
+by ~50% on National Demand. Cold-spell coverage is below 85%. Tail-risk improvements
+are not statistically significant at this sample size. See
+[`docs/technical_report.md` §7](docs/technical_report.md) for the full list.
+
+## Data and attribution
+
+- **NESO Historic Demand**, Day-Ahead Forecast Performance, and FES 2025 data:
+  [NESO Open Data Licence](https://www.neso.energy/document/152657/download).
+  "Supported by National Energy SO Open Data".
+- **Weather data** by [Open-Meteo](https://open-meteo.com/) (ERA5 reanalysis and
+  archived forecasts), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+  The free API tier is non-commercial.
+- Raw data is not redistributed; the pipeline downloads it on first run.
+
+## Licence
+
+Code: [MIT](LICENSE) · Data: see attribution above · Author: Daniyal Tariq
