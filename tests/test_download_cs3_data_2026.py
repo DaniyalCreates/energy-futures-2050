@@ -14,6 +14,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import pandas as pd
+
 from energy_futures.experiments.download_cs3_data_2026 import (
     CS3_END,
     CS3_START,
@@ -21,6 +23,8 @@ from energy_futures.experiments.download_cs3_data_2026 import (
     LEAD,
     LOCATIONS,
     YEAR_2026,
+    _check_era5_files_complete,
+    _check_schema_match,
     _get_with_retry,
     _neso_list_resources,
 )
@@ -256,3 +260,87 @@ class TestConstants:
 
     def test_lead_is_previous_day2(self):
         assert LEAD == "previous_day2"
+
+
+# ---------------------------------------------------------------------------
+# Stage 17 (a): ERA5 file completeness guard
+# ---------------------------------------------------------------------------
+
+class TestEra5FilesComplete:
+    """_check_era5_files_complete must raise if any city file is missing or incomplete."""
+
+    def _write_complete_city_files(self, directory: Path, cities=None) -> None:
+        if cities is None:
+            cities = list(LOCATIONS.keys())
+        for city in cities:
+            path = directory / f"{city}_{YEAR_2026}.json"
+            hourly: dict = {"time": ["2026-01-01T00:00"]}
+            for v in HOURLY_VARS:
+                hourly[v] = [1.0]
+            path.write_text(json.dumps({"hourly": hourly}))
+
+    def test_raises_when_all_files_missing(self, tmp_path):
+        """Empty directory → all city files absent → RuntimeError."""
+        with pytest.raises(RuntimeError, match="missing"):
+            _check_era5_files_complete(raw_weather_dir=tmp_path)
+
+    def test_raises_when_one_file_missing(self, tmp_path):
+        """5 of 6 cities present → raises about the missing one."""
+        cities = list(LOCATIONS.keys())
+        # Write 5 complete files, omit the last city
+        self._write_complete_city_files(tmp_path, cities=cities[:-1])
+        with pytest.raises(RuntimeError, match="missing"):
+            _check_era5_files_complete(raw_weather_dir=tmp_path)
+
+    def test_raises_when_file_incomplete(self, tmp_path):
+        """All files present but one is missing a required variable."""
+        cities = list(LOCATIONS.keys())
+        self._write_complete_city_files(tmp_path, cities=cities[:-1])
+        # Last city: write file with one variable missing
+        last_city = cities[-1]
+        path = tmp_path / f"{last_city}_{YEAR_2026}.json"
+        hourly_bad: dict = {"time": ["2026-01-01T00:00"]}
+        for v in HOURLY_VARS[:-1]:  # omit last variable
+            hourly_bad[v] = [1.0]
+        path.write_text(json.dumps({"hourly": hourly_bad}))
+        with pytest.raises(RuntimeError, match="incomplete"):
+            _check_era5_files_complete(raw_weather_dir=tmp_path)
+
+    def test_passes_when_all_complete(self, tmp_path):
+        """All 6 cities with all variables present → no exception."""
+        self._write_complete_city_files(tmp_path)
+        _check_era5_files_complete(raw_weather_dir=tmp_path)  # no exception
+
+
+# ---------------------------------------------------------------------------
+# Stage 17 (b): schema match guard (download side)
+# ---------------------------------------------------------------------------
+
+class TestSchemaMatchDownload:
+    """_check_schema_match must raise on column or dtype mismatch."""
+
+    def _make_df(self, extra_col: bool = False, bad_dtype: bool = False) -> "pd.DataFrame":
+        idx = pd.date_range("2026-01-01", periods=10, freq="30min", tz="UTC")
+        df = pd.DataFrame({"underlying_demand": 1.0, "temperature_2m_gb_mean": 10.0}, index=idx)
+        if extra_col:
+            df["unexpected"] = 0.0
+        if bad_dtype:
+            df["underlying_demand"] = df["underlying_demand"].astype("int32")
+        return df
+
+    def test_matching_schema_does_not_raise(self):
+        ref = self._make_df()
+        cand = self._make_df()
+        _check_schema_match(cand, ref, "test")  # no exception
+
+    def test_raises_on_extra_column(self):
+        ref = self._make_df()
+        cand = self._make_df(extra_col=True)
+        with pytest.raises(RuntimeError, match="Schema mismatch"):
+            _check_schema_match(cand, ref, "test")
+
+    def test_raises_on_dtype_mismatch(self):
+        ref = self._make_df()
+        cand = self._make_df(bad_dtype=True)
+        with pytest.raises(RuntimeError, match="Dtype mismatch"):
+            _check_schema_match(cand, ref, "test")

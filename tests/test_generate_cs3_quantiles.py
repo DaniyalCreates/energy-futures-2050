@@ -18,6 +18,8 @@ from energy_futures.experiments.generate_cs3_quantiles import (
     CS3_START,
     REFIT_FREQ,
     _check_output_dates,
+    _check_schema_match,
+    load_combined_demand,
 )
 from energy_futures.evaluate.backtest import blocks
 from energy_futures.features.build import demand_features
@@ -160,3 +162,44 @@ class TestRefitCutoffOrdering:
         # QS: 2026-01-01, 2026-04-01, 2026-07-01, 2026-10-01
         assert len(qs_blocks) == 4, \
             f"Expected 4 QS refits, got {len(qs_blocks)}: {[(str(b0.date()), str(b1.date())) for b0, b1 in qs_blocks]}"
+
+
+# ---------------------------------------------------------------------------
+# Stage 17 (b): schema check in load_combined_demand
+# ---------------------------------------------------------------------------
+
+class TestLoadCombinedDemandSchemaCheck:
+    """load_combined_demand must raise if demand_weather_2026 schema doesn't match hist."""
+
+    def _make_demand_parquet(self, tmp_path: "Path", name: str, start: str, n_days: int,
+                              extra_col: bool = False, bad_dtype: bool = False) -> "Path":
+        idx = pd.date_range(start, periods=n_days * 48, freq="30min", tz="UTC")
+        df = pd.DataFrame({"underlying_demand": 30_000.0}, index=idx)
+        if extra_col:
+            df["unexpected_col"] = 0.0
+        if bad_dtype:
+            df["underlying_demand"] = df["underlying_demand"].astype("int32")
+        path = tmp_path / f"{name}.parquet"
+        df.to_parquet(path)
+        return path
+
+    def test_raises_when_2026_has_extra_column(self, tmp_path):
+        """demand_weather_2026 with an extra column should raise before concatenating."""
+        hist = self._make_demand_parquet(tmp_path, "hist", "2025-01-01", 10)
+        d2026 = self._make_demand_parquet(tmp_path, "d2026", "2026-01-01", 5, extra_col=True)
+        with pytest.raises(RuntimeError, match="Schema mismatch"):
+            load_combined_demand(demand_path=hist, demand_2026_path=d2026)
+
+    def test_raises_when_2026_has_dtype_mismatch(self, tmp_path):
+        """demand_weather_2026 with wrong dtype should raise before concatenating."""
+        hist = self._make_demand_parquet(tmp_path, "hist", "2025-01-01", 10)
+        d2026 = self._make_demand_parquet(tmp_path, "d2026", "2026-01-01", 5, bad_dtype=True)
+        with pytest.raises(RuntimeError, match="Dtype mismatch"):
+            load_combined_demand(demand_path=hist, demand_2026_path=d2026)
+
+    def test_passes_when_schemas_match(self, tmp_path):
+        """Matching schemas concatenate correctly."""
+        hist = self._make_demand_parquet(tmp_path, "hist", "2025-12-01", 10)
+        d2026 = self._make_demand_parquet(tmp_path, "d2026", "2026-01-01", 5)
+        combined = load_combined_demand(demand_path=hist, demand_2026_path=d2026)
+        assert len(combined) == (10 + 5) * 48

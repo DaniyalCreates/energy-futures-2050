@@ -37,6 +37,7 @@ PROCESSED_DIR     = REPO / "data" / "processed"
 MANIFEST_PATH     = REPO / "data" / "raw" / "manifest.csv"
 
 DEMAND_2026_OUT   = PROCESSED_DIR / "demand_weather_2026.parquet"
+DEMAND_HIST_PATH  = PROCESSED_DIR / "demand_weather.parquet"
 
 # --- Constants ---
 NESO_API_BASE = "https://api.neso.energy/api/3/action"
@@ -69,6 +70,66 @@ LOCATIONS = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _check_era5_files_complete(raw_weather_dir: Path | None = None) -> None:
+    """Raise RuntimeError if any expected ERA5 2026 city file is missing or incomplete.
+
+    "Incomplete" means the JSON file exists but does not contain all HOURLY_VARS keys.
+    """
+    if raw_weather_dir is None:
+        raw_weather_dir = RAW_WEATHER_DIR
+    expected = [raw_weather_dir / f"{city}_{YEAR_2026}.json" for city in LOCATIONS]
+    missing = [f.name for f in expected if not f.exists()]
+    if missing:
+        raise RuntimeError(
+            f"ERA5 2026 weather files missing for {len(missing)} cities: {missing}. "
+            "Run demand_2026() first."
+        )
+    for city_path in expected:
+        with open(city_path) as fh:
+            raw = json.load(fh)
+        hourly_keys = set(raw.get("hourly", {}).keys())
+        missing_vars = [v for v in HOURLY_VARS if v not in hourly_keys]
+        if missing_vars:
+            raise RuntimeError(
+                f"ERA5 2026 file {city_path.name} is incomplete: "
+                f"missing variables {missing_vars}. "
+                "Delete the file and re-run demand_2026()."
+            )
+
+
+def _check_schema_match(
+    candidate: "pd.DataFrame",
+    reference: "pd.DataFrame",
+    context: str,
+) -> None:
+    """Raise RuntimeError if candidate's columns or dtypes differ from reference.
+
+    Columns must be identical (same names, same order). Dtypes must match exactly.
+    """
+    cand_cols = list(candidate.columns)
+    ref_cols = list(reference.columns)
+    if cand_cols != ref_cols:
+        missing_c = [c for c in ref_cols if c not in cand_cols]
+        extra_c = [c for c in cand_cols if c not in ref_cols]
+        raise RuntimeError(
+            f"Schema mismatch in {context}: "
+            f"missing columns {missing_c}, extra columns {extra_c}. "
+            f"Expected {ref_cols}, got {cand_cols}."
+        )
+    mismatched = [
+        (col, str(reference[col].dtype), str(candidate[col].dtype))
+        for col in ref_cols
+        if candidate[col].dtype != reference[col].dtype
+    ]
+    if mismatched:
+        raise RuntimeError(
+            f"Dtype mismatch in {context}: "
+            + ", ".join(
+                f"'{col}' expected {exp} got {got}" for col, exp, got in mismatched
+            )
+        )
+
 
 def _get_with_retry(url: str, params: dict, n_retry: int = 4) -> requests.Response:
     for attempt in range(n_retry):
@@ -210,17 +271,20 @@ def _build_demand_weather_2026(neso_path: Path) -> None:
     if demand.empty:
         raise RuntimeError("No demand rows found in 2026-01-01..2026-10-31 after cleaning.")
 
-    # --- Weather ---
-    era5_files = list(RAW_WEATHER_DIR.glob(f"*_{YEAR_2026}.json"))
-    if era5_files:
-        locs = list(LOCATIONS.keys())
-        wx, _ = cw.build(RAW_WEATHER_DIR, locs, demand.index)
-        # Only keep gb_mean columns that exist in the standard demand_weather.parquet
-        gb_cols = [c for c in wx.columns if c.endswith("_gb_mean")]
-        merged = demand.join(wx[gb_cols])
-    else:
-        print("  WARNING: no ERA5 2026 weather files found; saving demand only.")
-        merged = demand
+    # --- Weather: all 6 city files must exist and be complete ---
+    _check_era5_files_complete()
+    locs = list(LOCATIONS.keys())
+    wx, _ = cw.build(RAW_WEATHER_DIR, locs, demand.index)
+    gb_cols = [c for c in wx.columns if c.endswith("_gb_mean")]
+    merged = demand.join(wx[gb_cols])
+
+    # --- Schema check: merged must match the reference demand_weather.parquet ---
+    if DEMAND_HIST_PATH.exists():
+        ref = pd.read_parquet(DEMAND_HIST_PATH)
+        _check_schema_match(
+            merged, ref,
+            "demand_weather_2026.parquet vs demand_weather.parquet"
+        )
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     merged.to_parquet(DEMAND_2026_OUT)

@@ -9,6 +9,38 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 17 · 25 Nov 2026 · Two pre-run safety fixes: ERA5 completeness guard; schema check before concatenation
+
+- **Goal:** Harden the data pipeline so a partial or mismatched 2026 build raises an
+  error immediately rather than silently producing a demand-only or type-mismatched
+  parquet that would corrupt the CS-3 quantile run.
+- **Fix (a) — ERA5 completeness guard (`download_cs3_data_2026.py`):**
+  - New function `_check_era5_files_complete(raw_weather_dir=None)`: verifies that all 6
+    expected city files (`{city}_2026.json`) exist in `RAW_WEATHER_DIR` and that each
+    contains all 4 `HOURLY_VARS` keys.  Raises `RuntimeError("missing")` or
+    `RuntimeError("incomplete")` on failure.
+  - `_build_demand_weather_2026`: replaced the `if era5_files: ... else: WARNING`
+    block with an unconditional call to `_check_era5_files_complete()`. Demand-only
+    output is no longer possible.
+- **Fix (b) — schema check before concatenation:**
+  - New function `_check_schema_match(candidate, reference, context)` added to both
+    `download_cs3_data_2026.py` and `generate_cs3_quantiles.py`.  Raises
+    `RuntimeError("Schema mismatch")` if columns differ, `RuntimeError("Dtype mismatch")`
+    if any column's dtype differs.
+  - `_build_demand_weather_2026`: calls `_check_schema_match(merged, ref, ...)` after
+    building `merged`, using `demand_weather.parquet` as the reference (skips if that
+    file is absent; in practice it always exists).
+  - `load_combined_demand` in `generate_cs3_quantiles.py`: calls `_check_schema_match`
+    before `pd.concat`, so the error is caught before any training data is loaded.
+  - Also added `DEMAND_HIST_PATH` constant to `download_cs3_data_2026.py`.
+- **New tests:** 10 total (197 passing):
+  - `TestEra5FilesComplete` (4): all missing; one missing; last file incomplete
+    (variable absent); all complete passes.
+  - `TestSchemaMatchDownload` (3): matching passes; extra column raises; dtype mismatch raises.
+  - `TestLoadCombinedDemandSchemaCheck` (3): extra column in 2026 raises; dtype mismatch raises;
+    matching schemas concatenate correctly and return correct row count.
+- **No 2026 data downloaded or opened.**
+
 ## Stage 16 · 25 Nov 2026 · Restore DECISIONS.md D-038; add D-042; tidy cs3_protocol.md §4
 
 - **Goal:** Restore D-038 to its original Batch 6 wording (Stage 11 had modified it

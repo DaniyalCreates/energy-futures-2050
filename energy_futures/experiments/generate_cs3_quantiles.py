@@ -56,6 +56,43 @@ Q_COLS = ["q05", "q10", "q25", "q50", "q75", "q90", "q95"]
 
 
 # ---------------------------------------------------------------------------
+# Schema guard (protects concatenation integrity)
+# ---------------------------------------------------------------------------
+
+def _check_schema_match(
+    candidate: pd.DataFrame,
+    reference: pd.DataFrame,
+    context: str,
+) -> None:
+    """Raise RuntimeError if candidate's columns or dtypes differ from reference.
+
+    Columns must be identical (same names, same order). Dtypes must match exactly.
+    """
+    cand_cols = list(candidate.columns)
+    ref_cols = list(reference.columns)
+    if cand_cols != ref_cols:
+        missing_c = [c for c in ref_cols if c not in cand_cols]
+        extra_c = [c for c in cand_cols if c not in ref_cols]
+        raise RuntimeError(
+            f"Schema mismatch in {context}: "
+            f"missing columns {missing_c}, extra columns {extra_c}. "
+            f"Expected {ref_cols}, got {cand_cols}."
+        )
+    mismatched = [
+        (col, str(reference[col].dtype), str(candidate[col].dtype))
+        for col in ref_cols
+        if candidate[col].dtype != reference[col].dtype
+    ]
+    if mismatched:
+        raise RuntimeError(
+            f"Dtype mismatch in {context}: "
+            + ", ".join(
+                f"'{col}' expected {exp} got {got}" for col, exp, got in mismatched
+            )
+        )
+
+
+# ---------------------------------------------------------------------------
 # Data loading helpers (separated to allow unit testing)
 # ---------------------------------------------------------------------------
 
@@ -67,9 +104,15 @@ def load_combined_demand(
 
     The combined index is used for lag feature computation so that January 2026
     half-hours draw on December 2025 values (no gap at the year boundary).
+    Raises RuntimeError if demand_weather_2026.parquet columns/dtypes do not match
+    demand_weather.parquet (guards against partial or mismatched builds).
     """
     d_hist = pd.read_parquet(demand_path)
     d_2026 = pd.read_parquet(demand_2026_path)
+    _check_schema_match(
+        d_2026, d_hist,
+        "demand_weather_2026.parquet vs demand_weather.parquet"
+    )
     combined = pd.concat([d_hist, d_2026]).sort_index()
     combined = combined[~combined.index.duplicated(keep="last")]
     return combined
