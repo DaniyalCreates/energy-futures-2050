@@ -44,7 +44,7 @@ Note: on one day, B+ charged during an under-forecast period and pushed the annu
 | --- | --- | --- | --- |
 | H1: C vs B, p95 daily cost (historical) | −21 | [−596, +186] | Met on point estimate; **not significant** |
 | H1: C vs B, total shortfall (historical) | −10.1 GWh (−6.7%) | [−24.3, +0.3] GWh | Met; borderline |
-| H1: mean cost ≤ B + 1% | −69 (C cheaper) | [−125, −25] | Met; **significant** |
+| Mean cost sub-condition (≤ B + 1%) | −69 (C cheaper) | [−125, −25] | Met; CI excludes 0 (**exploratory secondary** — see statistical_tests.md §3.4; not the H1 verdict) |
 | H3: C beats B on p95 in ≥ 3 of 4 future cases | 3 of 4 (fails: Holistic 2035 fast electrification) | all 4 CIs include 0 | Met on point estimates; **not significant** |
 
 ![C vs B confidence intervals](../figures/b6_c_vs_b_ci.png)
@@ -81,6 +81,6 @@ C is ahead of B in **all 8 variants** on every metric. The advantage grows when 
 
 The defensible claims:
 - "Moving from rule-based to forecast-driven optimisation roughly doubles the battery value captured (38% → 61% of perfect foresight on real 2024–25 data)."
-- "Uncertainty-aware scheduling adds a small, consistent gain (+2.4 points; significant on average cost). Its tail-risk benefit is not statistically demonstrated with 22 months of data, but it grows when storage is scarce."
+- "Uncertainty-aware scheduling adds a small, consistent gain (+2.4 points; average-cost gain significant as an **exploratory secondary finding**). Its tail-risk benefit is not statistically demonstrated with 22 months of data, but it grows when storage is scarce."
 
 **Not defensible:** "uncertainty-aware AI makes planning substantially more robust."

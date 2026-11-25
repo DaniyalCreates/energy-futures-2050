@@ -12,8 +12,9 @@ _All numbers in §§2–3 are reproduced by running cs4_stats.py on the frozen f
 This document applies formal significance tests to two sets of existing results:
 1. **Point forecast accuracy** (Batch 4 / EXP-004): Diebold-Mariano tests comparing
    LightGBM FW vs naive_d7 (underlying demand) and LightGBM FW vs NESO (ND).
-2. **Battery optimisation arm comparisons** (Batch 6 / EXP-006): Holm-corrected
-   p-values derived from the existing block-bootstrap CIs (C vs B, all settings).
+2. **Battery optimisation arm comparisons** (Batch 6 / EXP-006): pre-registered
+   hypothesis assessment (H1, H2, H3) and exploratory Holm-corrected p-values
+   derived from the existing block-bootstrap CIs (C vs B, all settings).
 
 These tests are **exploratory** (not pre-registered for Batch 4 or 6): they provide
 formal inference to complement the previously reported CIs, but do not change any
@@ -79,7 +80,7 @@ which rounds to +17.15. The conclusion (p < 0.001) is unchanged._
 
 ---
 
-## 3. Battery arm comparisons — Holm correction (EXP-006)
+## 3. Battery arm comparisons — hypothesis assessment (EXP-006)
 
 ### 3.1 Background
 
@@ -87,23 +88,27 @@ EXP-006 compared six battery-dispatch arms:
 - **none** (no battery)
 - **A** (fixed dispatch rule)
 - **B** (point forecast + LP)
-- **B_plus** (point + LP + CQR intervals, no CVaR)
-- **C_minus** (quantile scenarios + LP, no CVaR risk weighting)
-- **C** (calibrated quantiles + CVaR objective)
+- **B_plus** (calibrated median + LP, no CVaR)
+- **C_minus** (point forecast × unconditional error quantiles + CVaR LP)
+- **C** (calibrated conditional quantiles + CVaR LP)
 - **oracle** (perfect-foresight bound)
 
-Pre-registered success criteria (D-035): H1 (mean cost C < B), H2 (p95 cost C < B),
-H3 (mean cost C < none). Existing bootstrap results (D-038): H1 met; H2 not met.
-
-This section applies Holm-Bonferroni correction to the available C-vs-B bootstrap CIs.
-H3 (C vs none) cannot be tested because the C-vs-none bootstrap is not in the saved
-outputs. Only C vs B is tested here.
+**Pre-registered success criteria (D-035), exact text from `configs/optimisation.yaml`:**
+- **H1:** "Setting H: C has lower 95th-percentile daily cost AND lower total shortfall
+  than B, with mean daily cost at most 1% higher than B."
+- **H2:** "Decomposition, reported whatever the result: C vs B_plus (value of the
+  risk-aware decision rule) and C vs C_minus (value of conditional uncertainty)."
+  *(H2 is descriptive; not a significance test.)*
+- **H3:** "Setting F: C has lower 95th-percentile daily cost than B in at least 3 of
+  the 4 future cases."
 
 **Cost metric:** stylised daily cost index (not £) = daily peak load (MW)
 + 2 × energy shortfall above threshold (MWh) + small throughput term. Units ≈ MW.
 See `docs/results/optimisation_report.md` §1 for the full definition.
 
 **Script input:** `outputs/optimisation/c_vs_b_bootstrap.csv` (read-only).
+
+---
 
 ### 3.2 C-vs-B bootstrap CIs and estimated p-values
 
@@ -127,29 +132,96 @@ is the primary inferential statement.
 _Note: Electric 2050 mean p-value was previously reported as 0.032; script value is 0.0325,
 rounds to 0.033. Conservative-family conclusion (rank 2, threshold 0.006) is unchanged._
 
-### 3.3 Holm correction
+---
 
-**Pre-specified family (H1, H2, H3 from D-035) — 3 hypotheses; H3 not testable:**
+### 3.3 Pre-registered hypothesis assessment (H1, H2, H3)
 
-H3 (mean cost C < none) is in the pre-specified family but cannot be tested because the
-C-vs-none bootstrap output is not in the saved files. The family therefore has m = 3
-pre-specified tests, of which 2 are testable. The Holm threshold for the first test is
-α/m = 0.05/3 = 0.0167.
+#### H1
 
-| Rank | Hypothesis | p-value (approx.) | Holm threshold (α/m−k+1) | Reject H0? |
-|:----:|-----------|:-----------------:|:------------------------:|:----------:|
-| 1 | H1: Historical 2024-25 mean C < B | 0.0072 | 0.05/3 = 0.0167 | **Yes** |
-| 2 | H2: Historical 2024-25 p95 C < B | 0.91 | 0.05/2 = 0.025 | No |
-| 3 | H3: mean cost C < none (not tested) | — | 0.05/1 = 0.05 | — |
+H1 is a **conjunction** requiring all three sub-conditions simultaneously:
 
-H1 (mean cost improvement) survives Holm correction at α = 0.05 with the full
-pre-specified family of m = 3 (threshold 0.0167 > 0.0072). H2 (tail cost) is not
-significant (p = 0.91). H3 is not testable.
+**Sub-condition 1 — p95 daily cost (Setting H):**
+- Point estimate: C−B = −21 MW (C appears cheaper at the 95th percentile)
+- 95% CI: [−596, +186] MW — **includes zero**
+- p ≈ 0.91 (approximate)
+- **Sub-condition 1 not statistically supported.**
 
-H1 also survives Holm correction when the family is treated as m = 2 (H1 and H2 only;
-threshold 0.025 > 0.0072).
+**Sub-condition 2 — total shortfall (Setting H):**
+- 7-day moving-block bootstrap (n = 663 days, seed = 42, N = 1 000 replicates)
+- Script result: CI = [−24.1, +0.2] GWh — **includes zero (barely)**
+- **Sub-condition 2 not statistically supported.**
+  _(Note: Batch 6 optimisation_report.md reports [−24.3, +0.3] GWh from a slightly
+  different bootstrap implementation; conclusion is the same in both cases.)_
 
-**Conservative family (all 10 C-vs-B tests) — Holm correction:**
+**Sub-condition 3 — mean cost ≤ B + 1%:**
+- C−B mean = −69 MW; CI [−125, −25] MW — CI excludes zero
+- Sub-condition met. This is a _constraint_ in H1 (C must not be much more expensive on
+  average), not the primary H1 criterion. The mean-cost gain itself is an exploratory
+  secondary finding; see §3.4.
+
+**H1 verdict:** **Not statistically supported.** The p95 component (p ≈ 0.91) and the
+shortfall component (CI includes 0) both fail. H1 is met on point estimates only.
+
+#### H2
+
+H2 is a decomposition, not a significance test. Reported whatever the result:
+- **C vs B+, mean cost (value of the risk-aware decision rule):** −71 [−158, −16] MW.
+  CI excludes 0 — the risk-aware rule is the primary driver. *(Exploratory secondary.)*
+- **C vs C−, mean cost (value of conditional uncertainty):** −19 [−47, +13] MW.
+  CI includes 0 — conditional calibrated quantiles add no detectable value over an
+  unconditional error distribution.
+
+H2 conclusion: C's gain comes from the risk-aware decision rule (B+ vs B+), not from
+conditional quantile calibration. This is a descriptive decomposition; no significance
+threshold applies.
+
+#### H3
+
+H3 requires C to have lower p95 daily cost than B in at least 3 of the 4 future cases.
+
+| Future case | C−B p95 (MW) | 95% CI | C better (point)? | CI includes 0? |
+|-------------|:------------:|:------:|:-----------------:|:--------------:|
+| Holistic 2035 | −315 | [−590, +508] | Yes | Yes |
+| Holistic 2035 fast elec. | +369 | [−570, +466] | No | Yes |
+| Holistic 2050 | −570 | [−1 239, +727] | Yes | Yes |
+| Electric 2050 | −575 | [−926, +701] | Yes | Yes |
+
+Point estimate: **3 of 4** future cases favour C → H3 met on point estimates.
+All 4 future-case p95 CIs include 0 → **H3 not statistically supported.**
+
+(H3 is not testable using DM or Holm: future settings use synthetic forecasts; no daily time
+series are available for formal testing. Assessment is from bootstrap CIs alone.)
+
+---
+
+### 3.4 Secondary exploratory: mean-cost Holm correction (5 comparisons)
+
+**⚠️ This section is EXPLORATORY and SECONDARY. The mean-cost gain is NOT H1.** H1 is the
+p95 AND shortfall AND mean≤B+1% conjunction assessed in §3.3 above.
+
+The mean daily cost of C is lower than B in 4 of 5 settings on point estimates. We apply
+Holm-Bonferroni over all 5 mean-cost C-vs-B comparisons as a secondary exploratory family.
+P-values are **approximate (normal approximation from 95% bootstrap CI)**.
+
+| Rank | Setting | C−B mean (MW) | 95% CI | p (approx.) | Holm threshold (α/m−k+1) | Reject H₀? |
+|:----:|---------|:-------------:|:------:|:-----------:|:------------------------:|:----------:|
+| 1 | Historical 2024-25 | −69 | [−125, −25] | 0.0072 | 0.010 | **Yes** |
+| 2 | Electric 2050 | −105 | [−212, −19] | 0.033 | 0.0125 | No |
+| 3 | Holistic 2035 fast elec. | −35 | [−79, +7] | 0.12 | 0.0167 | No |
+| 4 | Holistic 2035 | −20 | [−51, +21] | 0.27 | 0.025 | No |
+| 5 | Holistic 2050 | +36 | [−81, +205] | 0.62 | 0.050 | No |
+
+**Result:** Only the Historical 2024-25 mean-cost gain (p ≈ 0.0072) survives Holm correction
+across the 5-comparison exploratory family (α/5 = 0.010 > 0.0072). No future-case mean-cost
+gain survives correction.
+
+**This is an exploratory secondary finding.** It was not part of the pre-registered H1-H3
+success criteria in D-035. It may be reported as a secondary result, clearly labelled as
+exploratory, and may not be reported as a confirmed hypothesis or as evidence for H1.
+
+---
+
+### 3.5 Conservative Holm (all 10 C-vs-B tests; exploratory)
 
 | Rank | Setting | Stat | p-value (approx.) | Holm threshold | Reject H0? |
 |:----:|---------|------|:-----------------:|:--------------:|:----------:|
@@ -158,21 +230,34 @@ threshold 0.025 > 0.0072).
 | 3–10 | (all others) | — | ≥ 0.12 | ≥ 0.007 | No |
 
 No test survives Holm correction when all 10 comparisons are used as the family.
-H1 (p = 0.0072) falls just above the corrected threshold (0.005).
+The exploratory mean-cost finding (p = 0.0072) falls just above the corrected
+threshold (0.005) in this conservative family.
 
-### 3.4 Interpretation
+---
 
-- **Using the pre-specified family (H1, H2, H3; m = 3):** H1 is statistically significant
-  (p = 0.0072 < Holm threshold 0.0167). This is consistent with and formally supports the
-  original EXP-006 finding (D-038): "mean-cost gain is significant" based on a CI that
-  excludes zero. H2 is not significant. H3 is not testable from saved outputs.
-- **Using a conservative family of all 10 tests:** No test is significant after correction.
-  EXP-006 was designed with historical 2024-25 as the primary setting; the 9 additional
-  comparisons include future scenarios not part of the original success criteria.
-- **Recommendation:** The more defensible inference is from the pre-specified family.
-  The write-up should state that H1 is significant (p = 0.0072 before Holm; p < 0.0167
-  Holm threshold with m = 3) and that H2 is not, noting that the normality approximation
-  for p-values is an additional assumption beyond the bootstrap CIs.
+### 3.6 Interpretation
+
+- **H1 (pre-registered primary):** Not statistically supported. The p95 component
+  (p ≈ 0.91) and the shortfall component (CI barely includes 0) both fail. H1 is met
+  on point estimates only. No sentence in this document or in associated reports should
+  state "H1 is statistically significant" or "H1 is confirmed."
+
+- **H2 (pre-registered; descriptive):** The main source of C's gain is the risk-aware
+  decision rule, not conditional quantile calibration. No significance threshold applies
+  to H2.
+
+- **H3 (pre-registered):** 3 of 4 future-case p95 point estimates favour C; all 4 CIs
+  include 0. H3 met on point estimates only; not statistically supported.
+
+- **Secondary exploratory finding:** The historical 2024-25 mean-cost gain (C−B = −69 MW,
+  CI [−125, −25] MW) survives Holm correction across 5 mean-cost comparisons (p ≈ 0.007,
+  threshold 0.010). This is **not H1**; it is a secondary exploratory result. It may be
+  stated as: "The mean daily cost gain from uncertainty-aware scheduling is statistically
+  detectable on historical 2024-25 data (exploratory secondary finding, p ≈ 0.007,
+  Holm-corrected across 5 mean-cost comparisons; approximate p-value from bootstrap CI)."
+
+- **Conservative family (all 10 tests):** No test survives when all 10 C-vs-B comparisons
+  form the correction family (§3.5).
 
 ---
 
@@ -182,11 +267,14 @@ H1 (p = 0.0072) falls just above the corrected threshold (0.005).
 |------|--------|
 | DM: LightGBM FW vs naive_d7 (underlying demand) | Significant: FW significantly better (p < 0.001, DM = −11.68, lag=1) |
 | DM: LightGBM FW vs NESO (ND) | Significant: NESO significantly better (p < 0.001, DM = +17.15, lag=1) |
-| Holm (H1, H2; m=2 or m=3): mean cost C vs B, real data | H1 significant (p = 0.0072 < threshold 0.0167–0.025); H2 not (p = 0.91) |
-| Holm (all 10): C vs B across all settings | No test significant after full-family correction |
+| H1 (pre-registered): p95 AND shortfall AND mean≤B+1% | **Not statistically supported**: p95 CI includes 0 (p≈0.91); shortfall CI includes 0. Met on point estimates only. |
+| H2 (pre-registered; descriptive): C vs B+, C vs C− | Risk-aware rule: CI excludes 0. Conditional uncertainty: CI includes 0. Descriptive only. |
+| H3 (pre-registered): p95 better in ≥3 of 4 future cases | Met on point estimates (3 of 4); all 4 CIs include 0. Not statistically supported. |
+| Exploratory secondary: mean cost C vs B (m=5 Holm) | Historical 2024-25 only survives (p=0.0072 < threshold 0.010). No future case survives. |
+| Conservative Holm (all 10 C-vs-B tests) | No test survives after full-family correction |
 
-These results are consistent with and strengthen the existing reported findings from
-Batch 4 and Batch 6. No finding is reversed.
+These results are consistent with the existing reported findings from Batch 4 and Batch 6.
+No finding is reversed.
 
 ---
 
@@ -199,5 +287,8 @@ Batch 4 and Batch 6. No finding is reversed.
 | Electric 2050 mean p | 0.032 | 0.033 | 0.0325 rounded to 3dp |
 | Cost unit label | £/MWh/day | MW (cost index) | Corrected; see §3.1 |
 | DM at lag=7 | (not reported) | −7.53 / +15.15 | Added |
-| Pre-specified family size | m=2 (H1, H2) | m=3 (H1, H2, H3) | H3 not testable |
-| H1 Holm threshold | 0.025 | 0.0167 | Corrected for m=3 |
+| Pre-specified family size | m=2 (H1, H2) | m=3 (H1, H2, H3) | H3 not testable from saved outputs; corrected in Stage 9 |
+| H1 Holm threshold | 0.025 | 0.0167 | Corrected for m=3 in Stage 9 |
+| H1–H3 definitions | H1=mean C<B; H2=p95 C<B; H3=mean C<none | Per configs/optimisation.yaml | **Corrected Stage 11**: definitions were wrong; mean-cost gain relabelled as exploratory secondary |
+| "H1 is statistically significant" | Stated in §3.4 | **Removed** | H1 is NOT statistically supported (p95 p≈0.91; shortfall CI includes 0) |
+| Exploratory mean-cost Holm (m=5) | Not reported | Added §3.4 | Only Historical 2024-25 mean survives; labelled exploratory |

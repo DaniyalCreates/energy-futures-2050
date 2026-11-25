@@ -17,7 +17,7 @@ We built an open, reproducible pipeline:
 
 On held-out 2024–25 data, the forecaster reaches 664 MW mean absolute error (2.2%), 48% better than a seasonal-naive baseline. Its calibrated 90% intervals cover 90.5% of outcomes. It remains **52% less accurate than NESO's operational forecast**.
 
-In the decision experiment, forecast-driven optimisation captures 61% of perfect-foresight battery value, against 38% for a fixed rule. Uncertainty-aware (CVaR) scheduling captures 64%. Its average-cost improvement is statistically significant, but **its tail-risk improvement is not**. The main levers are optimising at all and forecast accuracy; risk-awareness is a smaller, consistent addition that grows when storage is scarce.
+In the decision experiment, forecast-driven optimisation captures 61% of perfect-foresight battery value, against 38% for a fixed rule. Uncertainty-aware (CVaR) scheduling captures 64%. Its average-cost improvement is statistically significant as an **exploratory secondary finding** (not a pre-registered outcome), but **its tail-risk improvement is not**. The main levers are optimising at all and forecast accuracy; risk-awareness is a smaller, consistent addition that grows when storage is scarce.
 
 ---
 
@@ -121,10 +121,10 @@ Setting H, share of perfect-foresight value captured: **A 37.7% · B 61.3% · B+
 
 | Test (C − B unless stated) | Estimate | 95% CI | Verdict |
 | --- | --- | --- | --- |
-| Mean daily cost (H) | −69 | [−125, −25] | Significant improvement |
+| Mean daily cost (H) | −69 | [−125, −25] | Exploratory secondary: CI excludes 0 |
 | 95th-percentile daily cost (H) | −21 | [−596, +186] | Not significant |
 | Total shortfall (H) | −10.1 GWh (−6.7%) | [−24.3, +0.3] | Borderline |
-| C vs B+, mean cost (risk-aware rule) | −71 | [−158, −16] | Significant |
+| C vs B+, mean cost (risk-aware rule) | −71 | [−158, −16] | Exploratory: CI excludes 0 |
 | C vs C−, mean cost (conditional uncertainty) | −19 | [−47, +13] | Not significant |
 | p95 better in future cases | 3 of 4 | every CI includes 0 | Not significant |
 

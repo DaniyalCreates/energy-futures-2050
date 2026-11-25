@@ -25,7 +25,7 @@ Battery operators, aggregators, suppliers with flexible tariffs and distribution
 ## 3. What the evidence says (including what didn't work)
 
 - **Optimising beats rules:** forecast-driven scheduling captured 61% of the achievable battery value on real 2024–25 data, against 38% for a typical fixed rule. In future high-renewable systems the fixed rule captured only 4–7%.
-- **Uncertainty-awareness helps a little, consistently:** +2.4 percentage points; significant on average cost, **not** significant for worst-day risk. The benefit grows when storage is scarce (+4.5 points with half the battery).
+- **Uncertainty-awareness helps a little, consistently:** +2.4 percentage points; significant on average cost (**exploratory secondary finding**, not a pre-registered outcome), **not** significant for worst-day risk. The benefit grows when storage is scarce (+4.5 points with half the battery).
 - **Forecast accuracy is the bigger prize:** 36% of value is still lost to forecast error. Our forecaster is about 50% less accurate than NESO's operational one, and I documented why that is likely and how to close the gap.
 - **The system-level risk is multi-day:** a cold, still week like December 2022 creates a ~10 TWh energy need in a 2050 system, far beyond daily batteries.
 

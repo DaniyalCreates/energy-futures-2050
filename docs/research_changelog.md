@@ -9,6 +9,56 @@ _Every change after the audit (commit 5db4552, verdict B) is recorded here: goal
 - 2026 data (Jan-Oct) is reserved for ONE pre-declared confirmation run, after the improved calibration is frozen. Disclosure: the NESO day-ahead benchmark file already on disk contains 2026 rows; they were loaded in Batch 4 but never used for modelling, and two rows (18 Nov 2026) were printed once while checking the file format.
 - Pre-registration seal: **laptop only** (Dani's choice). Write-ups must state that the protocol's timing cannot be verified by outsiders.
 
+## Stage 11 · 25 Nov 2026 · Fix H1–H3 definitions; relabel mean-cost gain as exploratory secondary
+
+- **Goal:** Correct mislabelled H1–H3 definitions throughout docs. The previous
+  statistical_tests.md used wrong definitions (H1=mean C<B; H2=p95 C<B;
+  H3=mean C<none) and stated "H1 is statistically significant." The correct
+  definitions (from configs/optimisation.yaml, D-035) are:
+  - H1: "Setting H: C has lower p95 AND lower total shortfall than B, with mean ≤ B+1%."
+  - H2: Decomposition — descriptive, not a significance test.
+  - H3: "Setting F: C has lower p95 than B in at least 3 of 4 future cases."
+- **H1 verdict:** Not statistically supported.
+  - p95 component: CI [−596, +186] MW includes 0; p≈0.91.
+  - Shortfall component: CI [−24.1, +0.2] GWh (7-day block bootstrap, n=663, seed=42)
+    includes 0 (barely). Slight difference from Batch 6 value [−24.3, +0.3] GWh;
+    same conclusion.
+  - Mean sub-condition met: CI [−125, −25] MW excludes 0.
+  - **H1 as a whole: NOT statistically supported.**
+- **H3 verdict:** 3 of 4 future-case p95 point estimates favour C; all 4 CIs include 0.
+  H3 met on point estimates only; not statistically supported.
+- **Secondary exploratory finding (mean cost):** Historical 2024-25 mean-cost gain
+  (p≈0.0072) survives Holm correction across m=5 mean-cost comparisons
+  (threshold α/5=0.010). This is NOT H1; it is exploratory and secondary.
+- **Files changed:**
+  - `energy_futures/experiments/cs4_stats.py` — script restructured: added
+    `run_shortfall_ci()`, `run_preregistered_h1_h3()`,
+    `run_exploratory_mean_holm()`; removed wrong internal H1/H2 label mapping;
+    added correct H1/H3 assessment from bootstrap CIs.
+  - `docs/results/statistical_tests.md` — §3 fully rewritten: H1–H3 definitions
+    corrected; "H1 is statistically significant" removed; added §3.3
+    (pre-registered assessment), §3.4 (exploratory mean-cost Holm), updated §4
+    summary, §5 change table.
+  - `docs/results/optimisation_report.md` — table row "H1: mean cost ≤ B+1% | ...
+    Met; significant" → "Mean cost sub-condition … exploratory secondary"; conclusion
+    "significant on average cost" → "significant as exploratory secondary finding".
+  - `docs/technical_report.md` — abstract line "statistically significant" →
+    "significant as exploratory secondary finding"; table rows "Significant
+    improvement" and "Significant" (C vs B+) → "Exploratory secondary: CI excludes 0"
+    and "Exploratory: CI excludes 0".
+  - `docs/ktp_case_study.md` — "significant on average cost" →
+    "significant on average cost (exploratory secondary finding)".
+  - `DECISIONS.md` D-038 — "mean-cost gain is significant" →
+    "H1 is NOT statistically supported … mean-cost gain is significant as exploratory
+    secondary finding".
+- **Tests:** 124 passed (unchanged from Stage 9; test_cs4_stats.py still passes
+  because all public function signatures are compatible).
+- **Remaining uncertainty:** The exploratory mean-cost Holm uses approximate p-values
+  from the normal approximation; the bootstrap CI is the primary evidence. The
+  shortfall CI [−24.1, +0.2] GWh differs by ≤0.3 GWh from the Batch 6 value; the
+  difference is due to block construction details and does not change the conclusion
+  (CI includes 0 in both cases).
+
 ## Stage 10 · 25 Nov 2026 · CS-3 protocol rewrite
 
 - **Goal:** Rewrite `docs/cs3_protocol.md` with precise, non-ambiguous specifications
